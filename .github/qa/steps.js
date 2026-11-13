@@ -58,6 +58,9 @@ if (step === 'fix-pr') {
   if (!ok) { console.log('автопроверка не прошла, PR не создаю'); (f.fixed || []).forEach(n => { try { G.comment(n, `Попытка исправления ${G.today()} не прошла автопроверку и отменена. Прогон: ${RUN}`); } catch (e) { } }); out('pr='); return; }
   const br = `fix/${process.env.GITHUB_RUN_ID}`;
   execSync(`git config user.name "Claude" && git config user.email "noreply@anthropic.com"`);
+  // шаг ИИ меняет настройки входа git, поэтому возвращаем токен прогона явно
+  execSync(`git config --local --unset-all http.https://github.com/.extraheader || true`, { shell: '/bin/bash' });
+  execSync(`git remote set-url origin https://x-access-token:${process.env.GH_TOKEN}@github.com/${G.REPO}.git`);
   execSync(`git checkout -b ${br} && git add index.html && git commit -m "Исправление ${f.fixed.map(n => '#' + n).join(', ')}" && git push origin ${br}`, { stdio: 'inherit' });
   const rep = fs.existsSync('fix-report.md') ? fs.readFileSync('fix-report.md', 'utf8') : '# Исправление';
   const title = rep.split('\n')[0].replace(/^#\s*/, '');
