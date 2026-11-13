@@ -1,0 +1,34 @@
+name: Консилиум
+
+# Раз в неделю: одна короткая страница для владельца.
+on:
+  schedule:
+    # четверг в 16:00 по Уфе (11:00 UTC), после работы команды
+    - cron: "0 11 * * 4"
+  workflow_dispatch:
+
+jobs:
+  council:
+    name: Консилиум
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions: { contents: read, issues: write, pull-requests: read, id-token: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Всё за неделю
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: node .github/qa/steps.js week
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: "Прочитай .github/agents/council.md и выполни задание полностью."
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 25
+            --allowedTools "Read,Write,Glob,Grep"
+      - name: Страница консилиума
+        if: always()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: node .github/qa/steps.js council-issue

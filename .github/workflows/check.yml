@@ -1,0 +1,27 @@
+name: Автопроверка
+
+# Без ИИ и без затрат: после каждого изменения приложения.
+on:
+  push:
+    branches: [main]
+    paths: [index.html]
+  pull_request:
+    paths: [index.html]
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Автопроверка
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Браузер
+        run: npm init -y >/dev/null && npm install playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: Проверка
+        run: node .github/qa/check.js index.html qa-shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: screenshots, path: qa-shots, if-no-files-found: ignore }

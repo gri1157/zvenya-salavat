@@ -1,0 +1,165 @@
+name: Команда
+
+# Тестировщики (Lite, Pro) → Критик → Исправитель → Проверяющий.
+# Понедельник и четверг в 12:00 по Уфе. Консилиум — отдельно, в council.yml.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1,4"
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "С какого этапа начать"
+        type: choice
+        default: all
+        options: [all, fix]
+
+concurrency:
+  group: team
+  cancel-in-progress: false
+
+env:
+  MODEL: claude-sonnet-5-5
+  FIX_MODEL: claude-opus-5-5
+
+jobs:
+  testers:
+    name: Тестировщик
+    if: github.event.inputs.stage != 'fix'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        who: [lite, pro]
+    permissions: { contents: read, issues: write, id-token: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Браузер
+        run: npm init -y >/dev/null && npm install playwright@1.48.2 && npx playwright install --with-deps chromium
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: "Прочитай .github/agents/tester-${{ matrix.who }}.md и выполни задание полностью."
+          claude_args: |
+            --model ${{ env.MODEL }}
+            --max-turns 60
+            --allowedTools "Bash,Read,Write,Glob,Grep"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tester-${{ matrix.who }}
+          path: |
+            bugs.json
+            report.md
+            qa-work/*.png
+          if-no-files-found: ignore
+      - name: Отчёт в Issues
+        if: always()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: node .github/qa/steps.js tester-issue ${{ matrix.who }}
+
+  critic:
+    name: Критик
+    needs: testers
+    if: always() && github.event.inputs.stage != 'fix'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions: { contents: read, issues: write, id-token: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Браузер
+        run: npm init -y >/dev/null && npm install playwright@1.48.2 && npx playwright install --with-deps chromium
+      - uses: actions/download-artifact@v4
+        with: { name: tester-lite, path: qa-in/lite }
+        continue-on-error: true
+      - uses: actions/download-artifact@v4
+        with: { name: tester-pro, path: qa-in/pro }
+        continue-on-error: true
+      - name: Уже заведённые ошибки
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: node .github/qa/steps.js open-bugs
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: "Прочитай .github/agents/critic.md и выполни задание полностью."
+          claude_args: |
+            --model ${{ env.MODEL }}
+            --max-turns 50
+            --allowedTools "Bash,Read,Write,Glob,Grep"
+      - name: Завести подтверждённые ошибки
+        if: always()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: node .github/qa/steps.js critic-apply
+
+  fixer:
+    name: Исправитель
+    needs: critic
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions: { contents: write, issues: write, pull-requests: write, id-token: write }
+    outputs:
+      pr: ${{ steps.pr.outputs.pr }}
+      branch: ${{ steps.pr.outputs.branch }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Очередь ошибок
+        id: q
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: node .github/qa/steps.js fix-queue
+      - name: Браузер
+        if: steps.q.outputs.count != '0'
+        run: npm init -y >/dev/null && npm install playwright@1.48.2 && npx playwright install --with-deps chromium
+      - uses: anthropics/claude-code-action@v1
+        if: steps.q.outputs.count != '0'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: "Прочитай .github/agents/fixer.md и выполни задание полностью."
+          claude_args: |
+            --model ${{ env.FIX_MODEL }}
+            --max-turns 80
+            --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
+      - name: Pull request
+        id: pr
+        if: steps.q.outputs.count != '0'
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: node .github/qa/steps.js fix-pr
+
+  reviewer:
+    name: Проверяющий
+    needs: fixer
+    if: always() && needs.fixer.outputs.pr != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions: { contents: read, issues: write, pull-requests: write, id-token: write }
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ needs.fixer.outputs.branch }}", fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Браузер
+        run: npm init -y >/dev/null && npm install playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: Материалы для проверки
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: node .github/qa/steps.js review-prep ${{ needs.fixer.outputs.pr }}
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: "Прочитай .github/agents/reviewer.md и выполни задание полностью."
+          claude_args: |
+            --model ${{ env.MODEL }}
+            --max-turns 40
+            --allowedTools "Bash,Read,Write,Glob,Grep"
+      - name: Вердикт в pull request
+        if: always()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: node .github/qa/steps.js review-post ${{ needs.fixer.outputs.pr }}
