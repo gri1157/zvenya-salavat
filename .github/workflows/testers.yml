@@ -1,0 +1,92 @@
+name: Тестировщики
+
+on:
+  schedule:
+    # каждый понедельник в 12:00 по Уфе (07:00 UTC), после утреннего обновления данных
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+    inputs:
+      role:
+        description: "Кого запустить"
+        type: choice
+        default: all
+        options: [all, fan, coach, gm, agent, data]
+
+concurrency:
+  group: testers
+  cancel-in-progress: false
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    outputs:
+      roles: ${{ steps.r.outputs.roles }}
+    steps:
+      - id: r
+        run: |
+          R="${{ github.event.inputs.role || 'all' }}"
+          if [ "$R" = "all" ]; then
+            echo 'roles=["fan","coach","gm","agent","data"]' >> "$GITHUB_OUTPUT"
+          else
+            echo "roles=[\"$R\"]" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    needs: pick
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        role: ${{ fromJson(needs.pick.outputs.roles) }}
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Установить браузер для тестов
+        run: |
+          npm init -y >/dev/null
+          npm install playwright@1.48.2
+          npx playwright install --with-deps chromium
+
+      - name: Собрать задание
+        run: |
+          cat .github/testers/common.md > qa-prompt.md
+          echo "" >> qa-prompt.md
+          cat .github/testers/${{ matrix.role }}.md >> qa-prompt.md
+
+      - name: Тестировщик ${{ matrix.role }}
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: "Прочитай файл qa-prompt.md в корне репозитория и выполни задание из него полностью. Итог запиши в report.md."
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 60
+            --allowedTools "Bash,Read,Write,Glob,Grep,WebSearch,WebFetch"
+
+      - name: Завести задачу с находками
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create qa --color D93F0B --description "Находки тестировщиков" --force >/dev/null 2>&1 || true
+          gh label create "qa-${{ matrix.role }}" --color FBCA04 --force >/dev/null 2>&1 || true
+          if [ -s report.md ]; then
+            TITLE="$(head -n1 report.md | sed 's/^# *//') · $(date +%d.%m.%Y)"
+            gh issue create --title "$TITLE" --body-file report.md --label qa --label "qa-${{ matrix.role }}"
+          else
+            gh issue create --title "Тестировщик ${{ matrix.role }} не дописал отчёт · $(date +%d.%m.%Y)" \
+              --body "Прогон: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              --label qa --label "qa-${{ matrix.role }}"
+          fi
