@@ -304,6 +304,11 @@ tr.me td{background:color-mix(in srgb,var(--accent) 12%,transparent);font-weight
 .duel i{display:block;height:100%;border-radius:3px;background:var(--muted);opacity:.6}
 .duel i.w{background:var(--good);opacity:1}
 /* игра */
+.sh-who{display:flex;gap:12px;align-items:center;min-width:0}
+.sh-who>div{min-width:0}
+.jersey{flex:none;display:block}
+.gm-list button{justify-content:flex-start!important;align-items:center;gap:10px}
+.gm-list .gm-pi{flex:1;min-width:0}
 nav a.nav-game{color:var(--red);border-color:var(--red);font-weight:700}
 nav a.nav-game[aria-current="page"]{background:var(--red);color:var(--red-ink);border-color:var(--red)}
 .gm-list button[disabled]{opacity:.5;cursor:default}
@@ -1488,6 +1493,10 @@ function spdBlock(p){const x=SPD[p.id];if(!x||!x.n)return"";const k=(v,l)=>`<div
   const g=GAMES.find(z=>z.d===x.maxd);
   return `<div class="sec"><h2>Скорость</h2><div class="kpis">${k(f1(x.avg),"средняя скорость, км/ч")}${k(f1(x.max),"максимальная скорость, км/ч")}${k(f1(x.kmg),"пробег за матч, км")}</div>
   <p class="legend"><span>Система слежения КХЛ, матчей: ${x.n}.</span> ${x.n>=3?`<span>Место в команде по средней скорости: ${x.ra} из ${SPD._n}, по максимальной: ${x.rm} из ${SPD._n}.</span> `:`<span>Место в команде не считается: меньше 3 матчей.</span> `}<span>Лучшая скорость показана ${dShort(x.maxd)}</span>${g?`<span>, соперник «${esc(g.o)}»</span>`:""}<span>.</span></p></div>`}
+/* майка игрока: фамилия и номер, цвет по амплуа */
+const JCOL={F:"#0b6b4f",D:"#1f4e8c",G:"#9b1c2e"};
+function jersey(name,num,pos,size){const sur=esc(SUR(String(name||"")));const n=num&&num!=="—"?String(num):"";const fs=Math.max(7,Math.min(13,104/Math.max(4,sur.length)));const c=JCOL[pos]||JCOL.F;
+  return `<svg class="jersey" width="${size}" height="${size}" viewBox="0 0 100 100" aria-hidden="true"><path d="M20 8 L38 3 Q50 13 62 3 L80 8 L98 30 L84 43 L78 37 L78 97 L22 97 L22 37 L16 43 L2 30 Z" fill="${c}" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/><path d="M22 84 L78 84" stroke="#fff" stroke-width="4"/>${size>=48?`<text x="50" y="33" text-anchor="middle" font-family="Unbounded,Arial Black,sans-serif" font-weight="700" font-size="${fs}" fill="#fff">${sur}</text>`:""}${n?`<text x="50" y="${size>=48?72:68}" text-anchor="middle" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="${size>=48?(n.length>1?36:42):(n.length>1?42:50)}" fill="#fff">${esc(n)}</text>`:""}</svg>`}
 function playerSheetLite(p){
   sheetP=p;const lu=STATE.LU[board];const st=status(p);const av=isAvail(p);const here=locate(lu,p);
   const d=SEAS["26"][p.name];const k=(v,l)=>`<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
@@ -1497,7 +1506,7 @@ function playerSheetLite(p){
   const partners=P.filter(o=>o!==p).map(o=>({o,v:chem(p,o)})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v).slice(0,6);
   const cands=STATE.ALL.filter(o=>o.pos===p.pos&&o!==p&&(isAvail(o)||locate(lu,o))).map(o=>({o,loc:locate(lu,o)})).sort((a,b)=>(!!b.loc-!!a.loc)||(b.o.sc-a.o.sc));
   const canSwap=!!here||av;
-  return `<div class="sheet-top"><div><div class="eyebrow">${p.n==="—"?"номер не объявлен":`№${p.n}`} · ${p.pos==="F"?(isC(p)?"центральный нападающий":"нападающий"):"защитник"}</div><h3 class="big" id="shName">${esc(p.name)}</h3><div class="note">${here?`Сейчас: ${here}`:av?"Сейчас в запасе":"Сейчас недоступен"}${p.trend==="hot"?" · <span class=\"good\">в форме</span>":p.trend==="cold"?" · <span class=\"bad\">спад</span>":""}</div></div><button class="btn" data-close>Закрыть</button></div>
+  return `<div class="sheet-top"><div class="sh-who">${jersey(p.name,p.n,p.pos,72)}<div><div class="eyebrow">${p.n==="—"?"номер не объявлен":`№${p.n}`} · ${p.pos==="F"?(isC(p)?"центральный нападающий":"нападающий"):"защитник"}</div><h3 class="big" id="shName">${esc(p.name)}</h3><div class="note">${here?`Сейчас: ${here}`:av?"Сейчас в запасе":"Сейчас недоступен"}${p.trend==="hot"?" · <span class=\"good\">в форме</span>":p.trend==="cold"?" · <span class=\"bad\">спад</span>":""}</div></div></div><button class="btn" data-close>Закрыть</button></div>
   ${st?`<div class="status-line">${esc(st[0][0].toUpperCase()+st[0].slice(1))}: ${esc(st[1])}</div>`:""}
   ${newbieNote(p)}<div class="sec"><h2>Сезон 2026/27</h2><div class="kpis">${kp}</div></div>
   ${spdBlock(p)}
@@ -2373,12 +2382,12 @@ function gamePickSheet(){if(!GSEL||!GSLOT)return;const lu=GSEL.lu,used=gUsed(lu)
   const cur=t==="g"?lu.g:lu[t][i][j];const title=t==="g"?"Вратарь":`${i+1}-я пятёрка · ${t==="f"?["левый нападающий","центральный нападающий","правый нападающий"][j]:["левый защитник","правый защитник"][j]}`;
   let rows="";
   if(t==="g"){rows=gGoalies().sort((a,b)=>b.sv-a.sv).map(x=>{const inj=typeof GINJ!=="undefined"&&GINJ[x.name];const busy=used[x.name]&&x.name!==cur;
-    return `<button data-gp="${esc(x.name)}"${inj||busy?" disabled":""}><span><b>${esc(x.name)}</b><br><small><span>${x.gp} ${pl(x.gp,MATCH)}</span> · <span>${f1(x.sv)}% отражённых</span> · <span>КН ${f2(x.gaa)}</span>${inj?` · <span class="bad">травма</span>`:""}</small></span><small>${x.name===cur?"выбран":""}</small></button>`}).join("")}
+    return `<button data-gp="${esc(x.name)}"${inj||busy?" disabled":""}>${jersey(x.name,(G.find(z=>z.name===x.name)||{}).n,"G",40)}<span class="gm-pi"><b>${esc(x.name)}</b><br><small><span>${x.gp} ${pl(x.gp,MATCH)}</span> · <span>${f1(x.sv)}% отражённых</span> · <span>КН ${f2(x.gaa)}</span>${inj?` · <span class="bad">травма</span>`:""}</small></span><small>${x.name===cur?"выбран":""}</small></button>`}).join("")}
   else{const pos=t==="f"?"F":"D";const list=P.filter(p=>p.pos===pos).map(p=>({p,x:gInfo(p)}));
     const key={pts:o=>o.x.pts,pm:o=>o.x.pm,spd:o=>o.x.spd,form:o=>o.x.form,toi:o=>{const t=String(o.x.toi);return t.includes(":")?toMin(t):0}}[GPSORT]||(o=>o.x.pts);
     list.sort((a,b)=>(t==="f"&&j===1?(isC(b.p)-isC(a.p)):0)||key(b)-key(a));
     rows=list.map(({p,x})=>{const st=status(p);const busy=used[p.name]&&p.name!==cur;const tags=[t==="f"?(isC(p)?"центр":"крайний"):(p.hand==="L"?"левый хват":p.hand==="R"?"правый хват":"хват неизвестен")];
-      return `<button data-gp="${esc(p.name)}"${st||busy?" disabled":""}><span><b>${p.n==="—"?"":p.n+" "}${esc(p.name)}</b> <small>${tags.join(", ")}</small><br><small><span>${x.gp} ${pl(x.gp,MATCH)}</span> · <span>${x.pts} ${pl(x.pts,GPTS)}</span> · <span>${sgn(x.pm)}</span> · <span>${esc(String(x.toi))} на льду</span>${x.spd?` · <span>${f1(x.spd)} км/ч</span>`:""} · <span>форма ${esc(x.ftxt)}</span></small>${st?`<br><small class="bad"><span>травма:</span> <span>${esc(st[1])}</span></small>`:busy?`<br><small>уже в твоём составе</small>`:""}</span><small>${p.name===cur?"выбран":""}</small></button>`}).join("")}
+      return `<button data-gp="${esc(p.name)}"${st||busy?" disabled":""}>${jersey(p.name,p.n,p.pos,40)}<span class="gm-pi"><b>${p.n==="—"?"":p.n+" "}${esc(p.name)}</b> <small>${tags.join(", ")}</small><br><small><span>${x.gp} ${pl(x.gp,MATCH)}</span> · <span>${x.pts} ${pl(x.pts,GPTS)}</span> · <span>${sgn(x.pm)}</span> · <span>${esc(String(x.toi))} на льду</span>${x.spd?` · <span>${f1(x.spd)} км/ч</span>`:""} · <span>форма ${esc(x.ftxt)}</span></small>${st?`<br><small class="bad"><span>травма:</span> <span>${esc(st[1])}</span></small>`:busy?`<br><small>уже в твоём составе</small>`:""}</span><small>${p.name===cur?"выбран":""}</small></button>`}).join("")}
   const sorts=t==="g"?"":`<div class="seg">${[["pts","Очки"],["form","Форма"],["pm","+/-"],["toi","Время"],["spd","Скорость"]].map(([k,l])=>`<button data-gps="${k}" aria-pressed="${GPSORT===k}">${l}</button>`).join("")}</div>`;
   openSheet(`<div class="sheet-top"><div><div class="eyebrow">Твой состав</div><h3 class="big" id="shName">${esc(title)}</h3></div><button class="btn" data-close>Закрыть</button></div>
   ${sorts}${cur?`<div class="actions"><button class="btn" data-gp="">Убрать ${esc(SUR(cur))} с этого места</button></div>`:""}
@@ -2532,7 +2541,7 @@ function playerSheetPro(p){
   const games=GAMES.filter(g=>g.dr.includes(p.id)).slice(-8).reverse().map(g=>{const gg=g.g.filter(e=>e[0]&&e[2]===p.id).length,aa=g.g.filter(e=>e[0]&&(e[3]===p.id||e[4]===p.id)).length;const ah=AHBY[g.d],rr=ah&&ah[4]?ah[4].find(x=>x[0]===p.id):null;return `<tr><td class="l">${dShort(g.d)}</td><td class="l">${g.h?"":"@ "}${esc(g.o)}</td><td>${g.gf}:${g.ga}${g.x?" "+g.x:""}</td><td>${gg}</td><td>${aa}</td><td>${rr?mmss(rr[1]):"—"}</td><td>${rr?rr[3]:"—"}</td><td>${rr?pmS(rr[2]):"—"}</td></tr>`}).join("");
   const cands=STATE.ALL.filter(o=>o.pos===p.pos&&o!==p&&(isAvail(o)||locate(lu,o))).map(o=>({o,loc:locate(lu,o)})).sort((a,b)=>(!!b.loc-!!a.loc)||(b.o.sc-a.o.sc));
   const canSwap=!!here||av;
-  return `<div class="sheet-top"><div><div class="eyebrow">${p.n==="—"?"номер не объявлен":`№${p.n}`} · ${p.pos==="F"?(isC(p)?"центр":"нападающий"):"защитник"} · ${p.hand==="L"?"левый хват":p.hand==="R"?"правый хват":"хват не найден"}</div><h3 class="big" id="shName">${esc(p.name)}</h3><div class="note">${p.fb&&!p.noX?"За выбранный период матчей в КХЛ нет, взят текущий сезон. ":""}${here?`Сейчас: ${here}`:av?"Сейчас в запасе":"Сейчас недоступен"}${p.trend==="hot"?" · <span class=\"good\">в форме</span>":p.trend==="cold"?" · <span class=\"bad\">спад</span>":""}</div></div><button class="btn" data-close>Закрыть</button></div>
+  return `<div class="sheet-top"><div class="sh-who">${jersey(p.name,p.n,p.pos,72)}<div><div class="eyebrow">${p.n==="—"?"номер не объявлен":`№${p.n}`} · ${p.pos==="F"?(isC(p)?"центр":"нападающий"):"защитник"} · ${p.hand==="L"?"левый хват":p.hand==="R"?"правый хват":"хват не найден"}</div><h3 class="big" id="shName">${esc(p.name)}</h3><div class="note">${p.fb&&!p.noX?"За выбранный период матчей в КХЛ нет, взят текущий сезон. ":""}${here?`Сейчас: ${here}`:av?"Сейчас в запасе":"Сейчас недоступен"}${p.trend==="hot"?" · <span class=\"good\">в форме</span>":p.trend==="cold"?" · <span class=\"bad\">спад</span>":""}</div></div></div><button class="btn" data-close>Закрыть</button></div>
   ${st?`<div class="status-line">${esc(st[0][0].toUpperCase()+st[0].slice(1))}: ${esc(st[1])}</div>`:""}
   ${newbieNote(p)}<button class="linkbtn" data-how="${p.id}">Из чего сложился рейтинг ${p.has?p.sc:""}</button>
   <div class="kpis">${k(p.has?p.sc:"—",T("rating","рейтинг"))}${k(f2(p.ppg),T("pts","очков за матч"))}${k(p.fN.gp?f2(p.fppg):"—",T("form",`форма, ${formN} матчей`))}${k(p.toiS,T("toi","время на льду"))}${k(f1(p.spg),T("sog","бросков за матч"))}${AHS[p.id].gp?k(mmss(AHS[p.id].avg5),"ИВ, 5 матчей"):""}${AHS[p.id].toi>=3600?k(f1(AHS[p.id].sog60),"бросков за 60 мин"):""}${k(p.blk,T("blk","блоков в сезоне"))}${k(p.hits,T("hits","силовых в сезоне"))}${p.fo>=20?k(pct(p.fop),`вбрасываний (${p.fo})`):""}${p.ppG?k(p.ppG,"голов в большинстве"):""}</div>
@@ -2548,7 +2557,7 @@ function goalieSheet(g){
   const rows=g.per.map(({k,r})=>`<tr><td class="l">${SLAB[k]}</td><td class="l">${esc(r[0])}</td><td>${r[1]}</td><td>${r[2]??"—"}</td><td>${f1((r[5]/r[4])*100)}%${r[8]?"*":""}</td><td>${f2(r[3]*60/(r[1]*toMin(r[7])))}</td><td>${r[6]}</td></tr>`).join("");
   const st=GINJ[g.name];const trk=GTRK[g.name]||[];
   const lg=GAMES.map(x=>({x,r:gLines(x).find(r=>r[0]===g.name)})).filter(o=>o.r).slice(-6).reverse().map(({x,r})=>`<div class="link"><span>${dShort(x.d)} · ${esc(x.o)} ${x.gf}:${x.ga}${r[1]<3300?` <small>${mmss(r[1])} на льду</small>`:""}</span><b>${r[2]?`${r[3]} из ${r[2]}`:"—"}</b></div>`).join("");
-  return `<div class="sheet-top"><div><div class="eyebrow">№${g.n} · вратарь</div><h3 class="big" id="shName">${esc(g.name)}</h3></div><button class="btn" data-close>Закрыть</button></div>
+  return `<div class="sheet-top"><div class="sh-who">${jersey(g.name,g.n,"G",72)}<div><div class="eyebrow">№${g.n} · вратарь</div><h3 class="big" id="shName">${esc(g.name)}</h3></div></div><button class="btn" data-close>Закрыть</button></div>
   ${st?`<div class="status-line">${esc(st[0][0].toUpperCase()+st[0].slice(1))}: ${esc(st[1])}</div>`:""}
   <div class="kpis"><div class="kpi"><b>${g.has?f1(g.svp*100)+"%":"—"}</b><span>${T("sv","% отражённых")}</span></div><div class="kpi"><b>${g.has?f2(g.gaa):"—"}</b><span>${T("gaa","коэфф. надёжности")}</span></div><div class="kpi"><b>${g.gp}</b><span>матчей</span></div><div class="kpi"><b>${g.so}</b><span>на ноль</span></div>${g.last5?`<div class="kpi"><b>${f1(g.last5.svp*100)}%</b><span>последние ${g.last5.n} матчей</span></div>`:""}</div>
   ${lg?`<div class="sec"><h2>Последние матчи</h2><div class="links">${lg}</div></div>`:""}
