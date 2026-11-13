@@ -303,6 +303,9 @@ tr.me td{background:color-mix(in srgb,var(--accent) 12%,transparent);font-weight
 .duel .da{justify-content:flex-end}
 .duel i{display:block;height:100%;border-radius:3px;background:var(--muted);opacity:.6}
 .duel i.w{background:var(--good);opacity:1}
+/* эмблема */
+.brand{display:flex;align-items:center;gap:12px}
+.brand .emblem{flex:none;display:block}
 /* игра */
 .sh-who{display:flex;gap:12px;align-items:center;min-width:0}
 .sh-who>div{min-width:0}
@@ -350,7 +353,7 @@ nav a.nav-game[aria-current="page"]{background:var(--red);color:var(--red-ink);b
     <div class="uisw-row"><div class="uisw" role="group" aria-label="Версия приложения"><button data-uiset="lite" aria-pressed="true" lang="en">Lite</button><button data-uiset="pro" aria-pressed="false" lang="en">Pro</button></div></div>
     <div class="rolesw-row pro-only"><div class="rolesw" role="group" aria-label="Раздел Pro"><button data-roleset="coach" aria-pressed="true">Тренер</button><button data-roleset="gm" aria-pressed="false">Генменеджер</button><button data-roleset="agent" aria-pressed="false">Агент</button></div></div>
     <div class="eyebrow">Салават Юлаев · FONBET КХЛ 2026/27</div>
-    <h1>Звенья Салавата</h1>
+    <div class="brand"><svg class="emblem" viewBox="0 0 100 116" width="52" height="60" role="img" aria-label="Эмблема «Звеньев Салавата»"><path d="M50 3 L95 15 L95 58 Q95 92 50 113 Q5 92 5 58 L5 15 Z" fill="#0b6b4f" stroke="#ffffff" stroke-width="4"/><path d="M50 11 L88 21 L88 58 Q88 86 50 104 Q12 86 12 58 L12 21 Z" fill="none" stroke="#7fd1ad" stroke-width="1.5"/><text x="50" y="47" text-anchor="middle" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="27" fill="#ffffff">ЗС</text><g stroke="#ffffff" stroke-width="5" stroke-linecap="round" fill="none"><path d="M30 56 L62 88 L72 88"/><path d="M70 56 L38 88 L28 88"/></g><ellipse cx="50" cy="96" rx="9" ry="3.6" fill="#111"/></svg><h1>Звенья Салавата</h1></div>
     <p class="lede lite-only">Пятёрки «Салавата», шансы на ближайший матч, таблица КХЛ и статистика игроков. Нажми на игрока, чтобы увидеть его цифры, или на подчёркнутое слово, чтобы узнать, что оно значит.</p>
     <p class="lede pro-only role-coach">Пятёрки, план на матч, соперник, календарь, время на льду, броски, форма, спецбригады и вратари по открытой статистике КХЛ. Нажми на игрока, чтобы увидеть его цифры или поменять его в составе.</p>
     <p class="lede pro-only role-gm">Сложность календаря и прогноз регулярки, где тонко в составе, зарплаты и отдача, возраст и легионеры, вратари лиги и кем усилить. Нажми на игрока, чтобы открыть его карточку агента.</p>
