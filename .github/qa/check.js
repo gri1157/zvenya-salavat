@@ -9,7 +9,7 @@ const path = require('path');
 const src = path.resolve(process.argv[2] || 'index.html');
 const shots = process.argv[3] || '';
 const LITE = ['board', 'game', 'games', 'table', 'leaders', 'players'];
-const PRO = ['board', 'game', 'plan', 'rival', 'sched', 'toi', 'form', 'special', 'leaders', 'players', 'settings', 'method'];
+const PRO = ['board', 'plan', 'rival', 'sched', 'toi', 'form', 'special', 'leaders', 'players', 'settings', 'method'];
 
 (async () => {
   let html = fs.readFileSync(src, 'utf8');
