@@ -2,15 +2,23 @@ name: Тестировщики
 
 on:
   schedule:
-    # каждый понедельник в 12:00 по Уфе (07:00 UTC), после утреннего обновления данных
-    - cron: "0 7 * * 1"
+    # понедельник и четверг в 12:00 по Уфе (07:00 UTC), после утреннего обновления данных
+    - cron: "0 7 * * 1,4"
   workflow_dispatch:
     inputs:
       role:
         description: "Кого запустить"
         type: choice
         default: all
-        options: [all, fan, coach, gm, agent, data]
+        options:
+          - all
+          - coach,gm,agent,data
+          - fan
+          - coach
+          - gm
+          - agent
+          - data
+          - summary-only
 
 concurrency:
   group: testers
@@ -21,18 +29,26 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       roles: ${{ steps.r.outputs.roles }}
+      any: ${{ steps.r.outputs.any }}
     steps:
       - id: r
         run: |
           R="${{ github.event.inputs.role || 'all' }}"
-          if [ "$R" = "all" ]; then
-            echo 'roles=["fan","coach","gm","agent","data"]' >> "$GITHUB_OUTPUT"
+          case "$R" in
+            all) L="fan,coach,gm,agent,data" ;;
+            summary-only) L="" ;;
+            *) L="$R" ;;
+          esac
+          if [ -z "$L" ]; then
+            echo 'roles=["none"]' >> "$GITHUB_OUTPUT"; echo "any=false" >> "$GITHUB_OUTPUT"
           else
-            echo "roles=[\"$R\"]" >> "$GITHUB_OUTPUT"
+            J=$(echo "$L" | awk -F, '{printf "["; for(i=1;i<=NF;i++){printf "%s\"%s\"", (i>1?",":""), $i}; printf "]"}')
+            echo "roles=$J" >> "$GITHUB_OUTPUT"; echo "any=true" >> "$GITHUB_OUTPUT"
           fi
 
   test:
     needs: pick
+    if: needs.pick.outputs.any == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
@@ -89,4 +105,49 @@ jobs:
             gh issue create --title "Тестировщик ${{ matrix.role }} не дописал отчёт · $(date +%d.%m.%Y)" \
               --body "Прогон: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
               --label qa --label "qa-${{ matrix.role }}"
+          fi
+
+  summary:
+    needs: [pick, test]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Собрать находки за последние 3 дня
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SINCE=$(date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          gh api "repos/${{ github.repository }}/issues?labels=qa&state=all&since=$SINCE&per_page=50" \
+            --jq '.[] | select((.labels|map(.name)|index("qa-summary"))|not) | "\n\n=====\n# Задача #\(.number): \(.title)\n\n\(.body)"' > qa-issues.md
+          gh api "repos/${{ github.repository }}/issues?labels=qa-summary&state=all&per_page=1" \
+            --jq '.[] | "# Прошлый итоговый отчёт #\(.number): \(.title)\n\n\(.body)"' > qa-prev-summary.md || true
+          wc -c qa-issues.md qa-prev-summary.md
+
+      - name: Итоговый отчёт
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: "Прочитай .github/testers/summary.md и выполни задание. Итог запиши в summary.md."
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 30
+            --allowedTools "Read,Write,Glob,Grep"
+
+      - name: Завести итоговую задачу
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create qa-summary --color 5319E7 --description "Итоговый отчёт тестировщиков" --force >/dev/null 2>&1 || true
+          if [ -s summary.md ]; then
+            gh issue create --title "Итоговый отчёт и предложения · $(date +%d.%m.%Y)" --body-file summary.md --label qa --label qa-summary
           fi
