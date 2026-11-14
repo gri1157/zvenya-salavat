@@ -445,11 +445,24 @@ nav a[aria-current="page"] .ni{animation:lgPop .5s cubic-bezier(.3,1.6,.45,1)}
 /* карточка игрока выезжает с пружиной */
 .sheet:not([hidden]){animation:lgUp .5s cubic-bezier(.22,1.25,.36,1)}
 @keyframes lgUp{from{transform:translateY(60px) scale(.98);opacity:.4}to{transform:none;opacity:1}}
+/* капля, которую можно тащить пальцем */
+.lg-drag{touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.lg-drag a,.lg-drag button{-webkit-user-drag:none}
+.lg-pill.drag{z-index:3;background:rgba(255,255,255,.10)!important;
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.9),inset 0 10px 18px -6px rgba(255,255,255,.55),inset 0 -10px 16px -8px rgba(0,60,30,.28),0 12px 28px rgba(0,40,20,.25)!important;
+  -webkit-backdrop-filter:saturate(220%) brightness(1.06) contrast(1.05);backdrop-filter:url(#lg-lens) saturate(220%) brightness(1.06);
+  scale:1.22 1.14;transition:scale .35s cubic-bezier(.3,1.6,.45,1),width .2s ease,height .2s ease,opacity .2s ease!important}
+.lg-pill.drag::after{opacity:.9;inset:2px 8% 55% 8%;background:linear-gradient(rgba(255,255,255,.75),rgba(255,255,255,0))}
+:root[data-zt="dark"] .lg-pill.drag{background:rgba(255,255,255,.06)!important;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.45),inset 0 10px 18px -6px rgba(255,255,255,.25),0 12px 28px rgba(0,0,0,.5)!important}
+.lg-dragging>a[aria-current="page"],.lg-dragging>button[aria-pressed="true"]{color:var(--ink)!important}
+.lg-dragging>a.nav-game{color:var(--red)!important}
+.lg-near{color:var(--sy)!important}
+.lg-near .ni{transform:scale(1.12);transition:transform .25s cubic-bezier(.3,1.6,.45,1)}
 @media (prefers-reduced-motion:reduce){.lg-pill,.lg-pill.moving,.sheet:not([hidden]),nav a[aria-current="page"] .ni{animation:none!important;transition:none!important}.btn:active,.seg button:active,nav a:active,.slot:active{transform:none}}
 @media print{html{background:#fff}.panel,.five,.tile,.tablewrap{-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}}
 </style>
 
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="lg-refract" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.03" numOctaves="2" seed="7" result="n"/><feGaussianBlur in="n" stdDeviation="2" result="nb"/><feDisplacementMap in="SourceGraphic" in2="nb" scale="22" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="lg-refract" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.03" numOctaves="2" seed="7" result="n"/><feGaussianBlur in="n" stdDeviation="2" result="nb"/><feDisplacementMap in="SourceGraphic" in2="nb" scale="22" xChannelSelector="R" yChannelSelector="G"/></filter><filter id="lg-lens" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feImage result="map" preserveAspectRatio="none" href="data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27100%27 height=%27100%27%3E%3ClinearGradient id=%27x%27%3E%3Cstop offset=%270%27 stop-color=%27%23f00%27/%3E%3Cstop offset=%271%27 stop-color=%27%23000%27/%3E%3C/linearGradient%3E%3ClinearGradient id=%27y%27 x2=%270%27 y2=%271%27%3E%3Cstop offset=%270%27 stop-color=%27%230f0%27/%3E%3Cstop offset=%271%27 stop-color=%27%23000%27/%3E%3C/linearGradient%3E%3Crect width=%27100%27 height=%27100%27 fill=%27url(%23x)%27/%3E%3Crect width=%27100%27 height=%27100%27 fill=%27url(%23y)%27 style=%27mix-blend-mode:screen%27/%3E%3C/svg%3E"/><feDisplacementMap in="SourceGraphic" in2="map" scale="14" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
 <div class="wrap">
   <header>
     <div class="langsw-row"><div class="themesw" role="group" aria-label="Тема оформления"><button data-zt-set="light" aria-pressed="true" aria-label="Светлая тема" title="Светлая тема"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><button data-zt-set="dark" aria-pressed="false" aria-label="Тёмная тема" title="Тёмная тема"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.800z"/></svg></button></div><div class="langsw" role="group" aria-label="Язык"><button data-lang="ru" aria-pressed="true" lang="ru">RU</button><button data-lang="en" aria-pressed="false" lang="en">EN</button></div></div>
@@ -2974,5 +2987,29 @@ syncRole();syncUI();syncLang();route();render();updateNavBadge();trAll();
     if(last&&last!==c){last.style.removeProperty("--mx");last.style.removeProperty("--my")}
     if(c){const r=c.getBoundingClientRect();c.style.setProperty("--mx",(e.clientX-r.left)+"px");c.style.setProperty("--my",(e.clientY-r.top)+"px")}last=c},{passive:true})}
   rim();all(true);setTimeout(()=>all(true),400);
+})();
+
+/* ===== Капля: перетаскивание пальцем по нижней панели и по Lite/Pro ===== */
+(function(){
+  const canDrag=h=>{if(h.matches(".uisw"))return true;return h.tagName==="NAV"&&getComputedStyle(h).position==="fixed"};
+  const items=h=>[...h.querySelectorAll(h.tagName==="NAV"?":scope>a":":scope>button")].filter(a=>a.offsetParent&&getComputedStyle(a).display!=="none");
+  let st=null,swallow=false;
+  document.addEventListener("pointerdown",e=>{const h=e.target.closest("nav,.uisw");if(!h||!canDrag(h)||e.button>0)return;
+    const pill=h.querySelector(":scope>.lg-pill");if(!pill)return;h.classList.add("lg-drag");
+    const r=h.getBoundingClientRect();st={h,pill,r,x0:e.clientX,y0:e.clientY,on:false,id:e.pointerId,near:null}},{passive:true});
+  const nearest=(h,cx)=>{let best=null,d=1e9;items(h).forEach(a=>{const m=a.offsetLeft+a.offsetWidth/2,dd=Math.abs(m-cx);if(dd<d){d=dd;best=a}});return best};
+  document.addEventListener("pointermove",e=>{if(!st||e.pointerId!==st.id)return;const dx=e.clientX-st.x0,dy=e.clientY-st.y0;
+    if(!st.on){if(Math.abs(dx)<7||Math.abs(dx)<Math.abs(dy))return;st.on=true;st.h.classList.add("lg-dragging");st.pill.classList.add("drag");st.pill.classList.remove("moving");try{st.h.setPointerCapture(e.pointerId)}catch(_){}}
+    const w=st.pill.offsetWidth,cx=e.clientX-st.r.left,x=Math.max(2,Math.min(st.h.clientWidth-w-2,cx-w/2));
+    st.pill.style.transition="none";st.pill.style.transform=`translate(${x}px,${st.pill.style.transform.match(/,\s*([-\d.]+)px/)?.[1]||6}px)`;
+    const n=nearest(st.h,cx);if(n!==st.near){st.near&&st.near.classList.remove("lg-near");n&&n.classList.add("lg-near");st.near=n;
+      st.pill.classList.toggle("red",!!(n&&n.classList.contains("nav-game")));if(navigator.vibrate)try{navigator.vibrate(4)}catch(_){}}},{passive:true});
+  const end=e=>{if(!st||(e&&e.pointerId!==st.id))return;const s=st;st=null;s.h.classList.remove("lg-drag","lg-dragging");
+    if(!s.on)return;swallow=true;setTimeout(()=>swallow=false,350);s.near&&s.near.classList.remove("lg-near");
+    s.pill.style.transition="";s.pill.classList.remove("drag");
+    const n=s.near;if(n){const cur=n.matches('[aria-current="page"],[aria-pressed="true"]');if(!cur)n.click();
+      else{const x=n.offsetLeft;s.pill.style.transform=s.pill.style.transform.replace(/translate\([-\d.]+px/,`translate(${x}px`);s.pill.classList.remove("moving");void s.pill.offsetWidth;s.pill.classList.add("moving")}}};
+  document.addEventListener("pointerup",end,{passive:true});document.addEventListener("pointercancel",e=>{if(!st)return;st.on&&(st.pill.style.transition="",st.pill.classList.remove("drag"));st.near&&st.near.classList.remove("lg-near");st.h.classList.remove("lg-drag","lg-dragging");st=null});
+  document.addEventListener("click",e=>{if(swallow&&e.isTrusted&&e.target.closest("nav,.uisw")){e.preventDefault();e.stopPropagation();swallow=false}},true);
 })();
 </script>
