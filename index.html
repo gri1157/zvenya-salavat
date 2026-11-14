@@ -445,6 +445,13 @@ nav a[aria-current="page"] .ni{animation:lgPop .5s cubic-bezier(.3,1.6,.45,1)}
 /* карточка игрока выезжает с пружиной */
 .sheet:not([hidden]){animation:lgUp .5s cubic-bezier(.22,1.25,.36,1)}
 @keyframes lgUp{from{transform:translateY(60px) scale(.98);opacity:.4}to{transform:none;opacity:1}}
+/* Lite: светлее слово и фон; Pro без изменений */
+.uisw button[data-uiset="lite"]{color:#2bbf6a}
+.uisw button[data-uiset="lite"][aria-pressed="true"]{color:#fff;background:#45d185}
+[data-ui="lite"] .uisw .lg-pill:not(.drag){background:#45d185;box-shadow:0 6px 18px rgba(40,190,110,.35),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -6px 12px -6px rgba(0,0,0,.15)}
+html:root[data-ui="lite"]{--page:radial-gradient(1200px 700px at 0% -10%,#bff1d8 0%,transparent 60%),radial-gradient(900px 700px at 110% 10%,#dcf7ea 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#cdf2df 0%,transparent 60%),#f3fbf7}
+html:root[data-ui="lite"][data-zt="dark"]{--page:radial-gradient(1100px 700px at 0% -10%,#17915f 0%,transparent 60%),radial-gradient(900px 700px at 110% 5%,#11684a 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#137a52 0%,transparent 60%),#0c1a14}
+@media (prefers-color-scheme:dark){html:root[data-ui="lite"]:not([data-zt="light"]):not([data-theme="light"]){--page:radial-gradient(1100px 700px at 0% -10%,#17915f 0%,transparent 60%),radial-gradient(900px 700px at 110% 5%,#11684a 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#137a52 0%,transparent 60%),#0c1a14}}
 /* капля, которую можно тащить пальцем */
 .lg-drag{touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .lg-drag a,.lg-drag button{-webkit-user-drag:none}
