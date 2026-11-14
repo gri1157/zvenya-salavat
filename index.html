@@ -4,33 +4,33 @@
 <style>
 /* Layout: тренерская доска — вкладки сверху; «Состав»: выбор варианта, сравнение, вратари, четыре пятёрки (ЛН·Ц·ПН над ЛЗ·ПЗ), запас, народный состав; «Соперник», «Форма», «Спецбригады», «Игроки» — отдельные вкладки */
 :root{
-  --bg:#e9f4f1; --surface:rgba(255,255,255,.62); --sunk:rgba(255,255,255,.58); --ink:#0b2a22; --muted:#4b6b62; --line:rgba(11,42,34,.11);
-  --accent:#007a55; --accent-ink:#ffffff; --gold:#9a6f17; --bad:#c0392b; --good:#0f8a57; --red:#e0233a; --red-ink:#ffffff;
+  --bg:#e9f4f1; --surface:rgba(246,255,250,.64); --sunk:rgba(232,250,240,.7); --ink:#0b2a22; --muted:#4b6b62; --line:rgba(11,42,34,.11);
+  --accent:#00843d; --accent-ink:#ffffff; --sy:#00843d; --sy-soft:rgba(0,132,61,.12); --gold:#9a6f17; --bad:#c0392b; --good:#0f8a57; --red:#e0233a; --red-ink:#ffffff;
   --glass-b:rgba(255,255,255,.78); --glass-hi:rgba(255,255,255,.95); --glass-sh:0 10px 30px rgba(0,60,40,.10); --sheet:rgba(247,252,250,.9); --solid:#f4faf8;
-  --page:radial-gradient(1200px 700px at 10% -10%,#a6f0d2 0%,transparent 60%),radial-gradient(900px 700px at 110% 10%,#bcd9ff 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#cdf6e6 0%,transparent 60%),#e9f4f1;
+  --page:radial-gradient(1200px 700px at 0% -10%,#7fe0b4 0%,transparent 60%),radial-gradient(900px 700px at 110% 10%,#b6ecd2 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#9fe3c1 0%,transparent 60%),#e3f3ec;
   --display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",system-ui,sans-serif;
   --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#060b0a; --surface:rgba(32,40,37,.55); --sunk:rgba(255,255,255,.07); --ink:#eef5f2; --muted:#9db4ad; --line:rgba(255,255,255,.10);
-  --accent:#30d158; --accent-ink:#04120b; --gold:#ffd60a; --bad:#ff6b5e; --good:#30d158; --red:#ff453a; --red-ink:#ffffff;
+  --accent:#2fd36f; --accent-ink:#03140a; --sy:#1fb560; --sy-soft:rgba(47,211,111,.14); --gold:#ffd60a; --bad:#ff6b5e; --good:#30d158; --red:#ff453a; --red-ink:#ffffff;
   --glass-b:rgba(255,255,255,.12); --glass-hi:rgba(255,255,255,.16); --glass-sh:0 12px 34px rgba(0,0,0,.45); --sheet:rgba(14,20,18,.92); --solid:#0d1412;
-  --page:radial-gradient(1100px 700px at 10% -10%,#0f5a42 0%,transparent 60%),radial-gradient(900px 700px at 110% 5%,#13305e 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#0c4434 0%,transparent 60%),#050807; color-scheme:dark}}
+  --page:radial-gradient(1100px 700px at 0% -10%,#0d6b47 0%,transparent 60%),radial-gradient(900px 700px at 110% 5%,#0a4a35 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#0b5a3d 0%,transparent 60%),#040a07; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#060b0a; --surface:rgba(32,40,37,.55); --sunk:rgba(255,255,255,.07); --ink:#eef5f2; --muted:#9db4ad; --line:rgba(255,255,255,.10);
-  --accent:#30d158; --accent-ink:#04120b; --gold:#ffd60a; --bad:#ff6b5e; --good:#30d158; --red:#ff453a; --red-ink:#ffffff;
+  --accent:#2fd36f; --accent-ink:#03140a; --sy:#1fb560; --sy-soft:rgba(47,211,111,.14); --gold:#ffd60a; --bad:#ff6b5e; --good:#30d158; --red:#ff453a; --red-ink:#ffffff;
   --glass-b:rgba(255,255,255,.12); --glass-hi:rgba(255,255,255,.16); --glass-sh:0 12px 34px rgba(0,0,0,.45); --sheet:rgba(14,20,18,.92); --solid:#0d1412;
-  --page:radial-gradient(1100px 700px at 10% -10%,#0f5a42 0%,transparent 60%),radial-gradient(900px 700px at 110% 5%,#13305e 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#0c4434 0%,transparent 60%),#050807; color-scheme:dark}
+  --page:radial-gradient(1100px 700px at 0% -10%,#0d6b47 0%,transparent 60%),radial-gradient(900px 700px at 110% 5%,#0a4a35 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#0b5a3d 0%,transparent 60%),#040a07; color-scheme:dark}
 :root[data-zt="light"]{
-  --bg:#e9f4f1; --surface:rgba(255,255,255,.62); --sunk:rgba(255,255,255,.58); --ink:#0b2a22; --muted:#4b6b62; --line:rgba(11,42,34,.11);
-  --accent:#007a55; --accent-ink:#ffffff; --gold:#9a6f17; --bad:#c0392b; --good:#0f8a57; --red:#e0233a; --red-ink:#ffffff;
+  --bg:#e9f4f1; --surface:rgba(246,255,250,.64); --sunk:rgba(232,250,240,.7); --ink:#0b2a22; --muted:#4b6b62; --line:rgba(11,42,34,.11);
+  --accent:#00843d; --accent-ink:#ffffff; --sy:#00843d; --sy-soft:rgba(0,132,61,.12); --gold:#9a6f17; --bad:#c0392b; --good:#0f8a57; --red:#e0233a; --red-ink:#ffffff;
   --glass-b:rgba(255,255,255,.78); --glass-hi:rgba(255,255,255,.95); --glass-sh:0 10px 30px rgba(0,60,40,.10); --sheet:rgba(247,252,250,.9); --solid:#f4faf8;
-  --page:radial-gradient(1200px 700px at 10% -10%,#a6f0d2 0%,transparent 60%),radial-gradient(900px 700px at 110% 10%,#bcd9ff 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#cdf6e6 0%,transparent 60%),#e9f4f1; color-scheme:light}
+  --page:radial-gradient(1200px 700px at 0% -10%,#7fe0b4 0%,transparent 60%),radial-gradient(900px 700px at 110% 10%,#b6ecd2 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#9fe3c1 0%,transparent 60%),#e3f3ec; color-scheme:light}
 :root[data-zt="dark"]{
   --bg:#060b0a; --surface:rgba(32,40,37,.55); --sunk:rgba(255,255,255,.07); --ink:#eef5f2; --muted:#9db4ad; --line:rgba(255,255,255,.10);
-  --accent:#30d158; --accent-ink:#04120b; --gold:#ffd60a; --bad:#ff6b5e; --good:#30d158; --red:#ff453a; --red-ink:#ffffff;
+  --accent:#2fd36f; --accent-ink:#03140a; --sy:#1fb560; --sy-soft:rgba(47,211,111,.14); --gold:#ffd60a; --bad:#ff6b5e; --good:#30d158; --red:#ff453a; --red-ink:#ffffff;
   --glass-b:rgba(255,255,255,.12); --glass-hi:rgba(255,255,255,.16); --glass-sh:0 12px 34px rgba(0,0,0,.45); --sheet:rgba(14,20,18,.92); --solid:#0d1412;
-  --page:radial-gradient(1100px 700px at 10% -10%,#0f5a42 0%,transparent 60%),radial-gradient(900px 700px at 110% 5%,#13305e 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#0c4434 0%,transparent 60%),#050807; color-scheme:dark}
+  --page:radial-gradient(1100px 700px at 0% -10%,#0d6b47 0%,transparent 60%),radial-gradient(900px 700px at 110% 5%,#0a4a35 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#0b5a3d 0%,transparent 60%),#040a07; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;margin:0;
@@ -398,6 +398,20 @@ nav .ni,nav .ns{display:none}
   [data-ui="lite"] .wrap{padding-bottom:96px}
   [data-ui="lite"] .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 }
+/* фирменный зелёный «Салавата» */
+h1{color:var(--sy)}
+h2{color:var(--sy)}
+.sheet h3.big{color:var(--ink)}
+.panel,.five,.hero,.tablewrap{box-shadow:var(--glass-sh),inset 0 1px 0 var(--glass-hi),inset 0 3px 0 -1px var(--sy-soft)}
+.tile b,.kpi b,.sn,.gm-pts{color:var(--sy)}
+nav a[aria-current="page"]{background:var(--sy);color:#fff;box-shadow:0 4px 14px rgba(0,132,61,.35)}
+nav a.nav-game[aria-current="page"]{background:var(--red);color:var(--red-ink);box-shadow:0 4px 14px rgba(224,35,58,.35)}
+.uisw button[aria-pressed="true"]{background:var(--sy);color:#fff}
+.rolesw button[aria-pressed="true"]{background:var(--sy);color:#fff;border-color:transparent}
+.langsw button[aria-pressed="true"],.themesw button[aria-pressed="true"]{background:var(--sy);color:#fff}
+.eyebrow{color:var(--sy)}
+.five-name{color:var(--sy)}
+.slot .pos{color:var(--sy)}
 @media print{html{background:#fff}.panel,.five,.tile,.tablewrap{-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}}
 </style>
 
