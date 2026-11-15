@@ -2569,7 +2569,7 @@ const gameNext=()=>upcoming().find(x=>gameDeadline(x)>Date.now())||null;
 function zvGameSchedule(){return upcoming().map(x=>({d:x.d,o:x.o,kickoff:new Date(kickoffOf(x)).toISOString(),deadline:new Date(gameDeadline(x)).toISOString()}))}
 let GSEAL={};
 /* цвета клубов КХЛ для кнопки «Кто победит»: [фон, текст] */
-const TEAM_COLORS={"Адмирал":["#0b0b0f","#fff"],"Ак Барс":["#0f6e3c","#fff"],"Автомобилист":["#d0102e","#fff"],"Барыс":["#0057a8","#ffd200"],"Нефтехимик":["#0067b1","#fff"],"Металлург Мг":["#14264f","#fff"],"Трактор":["#111111","#fff"],"Сибирь":["#16285e","#fff"],"Авангард":["#a50021","#fff"],"Амур":["#c8102e","#fff"],"Динамо Мн":["#0050a0","#fff"],"Лада":["#d01f2e","#fff"],"Шанхай Дрэгонс":["#b5121b","#ffd200"],"Сочи":["#0f7fc2","#fff"],"СКА":["#1d4f91","#fff"],"ЦСКА":["#c8102e","#fff"],"Динамо М":["#0055a5","#fff"],"Спартак":["#d50032","#fff"],"Локомотив":["#c8102e","#fff"],"Северсталь":["#1f1f1f","#fff"],"Торпедо НН":["#00205b","#fff"]};
+const TEAM_COLORS={"Адмирал":["#0b0b0f","#fff"],"Ак Барс":["#0f6e3c","#fff"],"Автомобилист":["#d0102e","#fff"],"Барыс":["#0057a8","#ffd200"],"Нефтехимик":["#0067b1","#fff"],"Металлург Мг":["#14264f","#fff"],"Трактор":["#111111","#fff"],"Сибирь":["#16285e","#fff"],"Авангард":["#121212","#ff3b3b"],"Амур":["#c8102e","#fff"],"Динамо Мн":["#0050a0","#fff"],"Лада":["#d01f2e","#fff"],"Шанхай Дрэгонс":["#1b2a4a","#f2c14e"],"Сочи":["#00808a","#fff"],"СКА":["#1d4f91","#fff"],"ЦСКА":["#c8102e","#fff"],"Динамо М":["#0055a5","#fff"],"Спартак":["#d50032","#fff"],"Локомотив":["#c8102e","#fff"],"Северсталь":["#121212","#ffd400"],"Торпедо НН":["#00205b","#fff"]};
 const teamColor=o=>TEAM_COLORS[o]||["#4a5560","#fff"];
 const gPerOk=per=>{if(per==="all")return null;const now=Date.now();const from=per==="week"?ufaDay(now-7*864e5):ufaDay(now).slice(0,8)+"01";return d=>d>=from};
 function gWeekStar(){const ok=gPerOk("week");const ids=[...new Set(Object.values(GSEAL).flatMap(v=>Object.keys(v.picks)))];let best=null;ids.forEach(id=>{const s=scoreUser(id,ok);if(s.n&&s.tot>0&&(!best||s.tot>best.s.tot))best={id,s}});return best}
@@ -2581,7 +2581,7 @@ const gDraftKey=d=>"zv-game-"+d;
 function gDraftLoad(d){try{const v=JSON.parse(localStorage.getItem(gDraftKey(d))||"null");if(v&&v.lu)return v}catch(e){}return null}
 function gDraftSave(){if(!GSEL||!GSEL._d)return;try{localStorage.setItem(gDraftKey(GSEL._d),JSON.stringify({w:GSEL.w,gf:GSEL.gf,ga:GSEL.ga,a:GSEL.a,lu:GSEL.lu}))}catch(e){}}
 function gUsed(lu){const m={};lu.f.forEach((l,i)=>l.forEach((n,j)=>{if(n)m[n]=`${i+1}-я пятёрка, ${GPOS.f[j]}`}));lu.d.forEach((l,i)=>l.forEach((n,j)=>{if(n)m[n]=`${i+1}-я пятёрка, ${GPOS.d[j]}`}));if(lu.g)m[lu.g]="вратарь";return m}
-const gGoalies=()=>G.filter(g=>g.s&&g.s["26"]).map(g=>{const r=g.s["26"][0];return {name:g.name,gp:r[1],sv:r[4]?r[5]/r[4]*100:0,gaa:r[1]?r[3]*60/(r[1]*toMin(r[7])):0}});
+const gGoalies=()=>G.filter(g=>g.s).map(g=>{const r=(g.s["26"]||[])[0];if(!r)return {name:g.name,gp:0,sv:0,gaa:0};return {name:g.name,gp:r[1],sv:r[4]?r[5]/r[4]*100:0,gaa:r[1]?r[3]*60/(r[1]*toMin(r[7])):0}});
 function gInfo(p){const d=SEAS["26"][p.name]||[0,0,0,0,0,"—"];const sp=SPD[p.id];const f=p.fN&&p.fN.gp?`${p.fN.g+p.fN.a} за ${p.fN.gp}`:"—";
   return {pts:d[1]+d[2],gp:d[0],pm:d[3]||0,toi:d[5]||"—",spd:sp&&sp.n?sp.avg:0,form:p.fppg||0,ftxt:f}}
 function gamePickSheet(){if(!GSEL||!GSLOT)return;const lu=GSEL.lu,used=gUsed(lu);const {t,i,j}=GSLOT;
