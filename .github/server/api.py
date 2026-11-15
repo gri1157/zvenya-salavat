@@ -160,12 +160,20 @@ def site_host():
 HOST = site_host()
 APP = "https://" + HOST if HOST else ""
 HOOK_SECRET = hmac.new(TOKEN.encode(), b"zvenya-webhook", hashlib.sha256).hexdigest()[:48] if TOKEN else ""
-WELCOME = ("Привет! Это «Звенья Салавата» — составы, статистика и прогнозы «Салавата Юлаева».\n\n"
-           "🏒 Собирай свой состав и сравнивай с тренером\n"
-           "🎯 «Моя игра»: прогноз на каждый матч и рейтинг болельщиков\n"
-           "📊 Таблица, лидеры КХЛ, карточки игроков\n\n"
-           "В день матча я напомню, до скольких принимается прогноз (выключить — /remind).\n"
-           "⚡ Хочешь получать голы «Салавата» во время матча? Жми /goals.")
+WELCOME = ("<b>🏒 Звенья Салавата</b>\n\n"
+           "<b>Заходи в игру, выставляй свой состав и своего топового игрока!</b>\n"
+           "🎯 Угадывай счёт матча\n"
+           "🏆 Получай очки и соревнуйся с другими болельщиками\n\n"
+           "🔔 В день матча напомню о прогнозе — /remind\n"
+           "⚡ Голы «Салавата» онлайн — /goals")
+DESCRIPTION = ("🏒 Звенья Салавата — игра для болельщиков «Салавата Юлаева»\n\n"
+               "▶️ Заходи в игру\n"
+               "🧩 Выставляй свой состав на матч\n"
+               "⭐ Выбирай своего топового игрока\n"
+               "🎯 Угадывай счёт\n"
+               "🏆 Получай очки и соревнуйся с другими болельщиками\n\n"
+               "Жми «Запустить» 👇")
+SHORT_DESCRIPTION = "🏒 Собирай состав, выбирай топового игрока, получай очки и соревнуйся с болельщиками «Салавата»!"
 
 
 def kb(text="Открыть Звенья", frag=""):
@@ -210,9 +218,8 @@ def bot_setup():
     tg("setMyCommands", commands=[{"command": "start", "description": "Открыть приложение"},
                                   {"command": "remind", "description": "Напоминания о прогнозах: включить или выключить"},
                                   {"command": "goals", "description": "Голы «Салавата» онлайн: включить или выключить"}])
-    tg("setMyShortDescription", short_description="Составы, статистика и прогнозы «Салавата Юлаева»")
-    tg("setMyDescription", description="«Звенья Салавата»: составы и пятёрки, статистика игроков, таблица и лидеры КХЛ. "
-                                       "Делай прогноз на каждый матч, собирай состав и соревнуйся с другими болельщиками.")
+    tg("setMyShortDescription", short_description=SHORT_DESCRIPTION)
+    tg("setMyDescription", description=DESCRIPTION)
 
 
 def bot_update(u):
@@ -239,7 +246,7 @@ def bot_update(u):
     cmd = text.split()[0].split("@")[0].lower() if text else ""
     if cmd == "/start":
         set_sub(uid, True)
-        return {"method": "sendMessage", "chat_id": chat["id"], "text": WELCOME, "reply_markup": kb()}
+        return {"method": "sendMessage", "chat_id": chat["id"], "text": WELCOME, "parse_mode": "HTML", "reply_markup": kb("▶️ Играть")}
     if cmd == "/goals":
         on = not load("subs").get(uid, {}).get("goals")
         set_goals(uid, on)
