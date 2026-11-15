@@ -222,6 +222,7 @@ def bot_setup():
     tg("setMyCommands", commands=[{"command": "start", "description": "Открыть приложение"},
                                   {"command": "remind", "description": "Напоминания о прогнозах: включить или выключить"},
                                   {"command": "goals", "description": "Голы «Салавата» онлайн: включить или выключить"}])
+    tg("setChatMenuButton", menu_button={"type": "web_app", "text": "Играть", "web_app": {"url": APP + "/"}})
     tg("setMyShortDescription", short_description=SHORT_DESCRIPTION)
     tg("setMyDescription", description=DESCRIPTION)
 
