@@ -486,6 +486,19 @@ html:root[data-ui="lite"][data-zt="dark"]{--page:radial-gradient(1100px 700px at
 .lg-ghost small{font-weight:600;color:var(--muted);font-size:11px}
 :root[data-zt="dark"] .lg-ghost{background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5),inset 0 10px 18px -6px rgba(255,255,255,.25),0 18px 40px rgba(0,0,0,.55)}
 @keyframes lgPop{from{scale:.6;opacity:0}to{scale:1;opacity:1}}
+/* «Моя игра»: красный заголовок и кнопки «Кто победит» в цветах клубов */
+.gm-title{color:var(--red)!important}
+.gm-pick{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 4px}
+.gm-pick button{flex:1 1 140px;min-height:52px;padding:12px 16px;border-radius:16px;border:2px solid transparent!important;background:var(--tc)!important;color:var(--tx)!important;font:800 16px var(--body);letter-spacing:.2px;cursor:pointer;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 6px 16px color-mix(in srgb,var(--tc) 35%,transparent)!important;transition:transform .25s cubic-bezier(.3,1.6,.45,1),opacity .2s,box-shadow .2s}
+.gm-pick button:active{transform:scale(.95)}
+.gm-pick:has([aria-pressed="true"]) button:not([aria-pressed="true"]){opacity:.4}
+.gm-pick button[aria-pressed="true"]{transform:scale(1.03);box-shadow:0 0 0 3px var(--bg,#fff),0 0 0 6px var(--tc),0 10px 24px color-mix(in srgb,var(--tc) 45%,transparent)!important}
+.gm-pick button[aria-pressed="true"]::before{content:"✓ "}
+.gm-pick button:disabled{cursor:default}
+:root[data-zt="dark"] .gm-pick button{border-color:rgba(255,255,255,.28)!important}
+:root[data-zt="dark"] .gm-pick button[aria-pressed="true"]{border-color:#fff!important;box-shadow:0 0 0 3px var(--bg),0 0 0 5px rgba(255,255,255,.75),0 10px 24px rgba(0,0,0,.5)!important}
+@media (prefers-color-scheme:dark){:root:not([data-zt="light"]) .gm-pick button{border-color:rgba(255,255,255,.28)!important}:root:not([data-zt="light"]) .gm-pick button[aria-pressed="true"]{border-color:#fff!important}}
 /* «Моя игра»: контрастные зелёные рамки полей и состава */
 :root{--frame:rgba(0,132,61,.78)}
 :root[data-zt="dark"]{--frame:rgba(47,211,111,.62)}
@@ -496,7 +509,6 @@ html:root[data-ui="lite"][data-zt="dark"]{--page:radial-gradient(1100px 700px at
 .gm-fives .slot.empty-g .snm{color:var(--sy)!important;font-weight:700}
 .gm-score input,#gAgent{border:2px solid var(--frame)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--sy) 10%,transparent)!important;font-weight:800;color:var(--ink)}
 .gm-score input:focus,#gAgent:focus{outline:none;border-color:var(--sy)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--sy) 25%,transparent)!important}
-.gm-pick button{border:1.5px solid var(--frame)!important}
 .gm-score input:disabled,#gAgent:disabled{opacity:.85}
 /* капля, которую можно тащить пальцем */
 .lg-drag{touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -2551,6 +2563,9 @@ const gameNext=()=>upcoming().find(x=>gameDeadline(x)>Date.now())||null;
 /* для задачи-фиксатора: ближайшие матчи со сроком приёма */
 function zvGameSchedule(){return upcoming().map(x=>({d:x.d,o:x.o,kickoff:new Date(kickoffOf(x)).toISOString(),deadline:new Date(gameDeadline(x)).toISOString()}))}
 let GSEAL={};
+/* цвета клубов КХЛ для кнопки «Кто победит»: [фон, текст] */
+const TEAM_COLORS={"Адмирал":["#0b0b0f","#fff"],"Ак Барс":["#0f6e3c","#fff"],"Автомобилист":["#d0102e","#fff"],"Барыс":["#0057a8","#ffd200"],"Нефтехимик":["#0067b1","#fff"],"Металлург Мг":["#14264f","#fff"],"Трактор":["#111111","#fff"],"Сибирь":["#16285e","#fff"],"Авангард":["#a50021","#fff"],"Амур":["#c8102e","#fff"],"Динамо Мн":["#0050a0","#fff"],"Лада":["#d01f2e","#fff"],"Шанхай Дрэгонс":["#b5121b","#ffd200"],"Сочи":["#0f7fc2","#fff"],"СКА":["#1d4f91","#fff"],"ЦСКА":["#c8102e","#fff"],"Динамо М":["#0055a5","#fff"],"Спартак":["#d50032","#fff"],"Локомотив":["#c8102e","#fff"],"Северсталь":["#1f1f1f","#fff"],"Торпедо НН":["#00205b","#fff"]};
+const teamColor=o=>TEAM_COLORS[o]||["#4a5560","#fff"];
 const gPerOk=per=>{if(per==="all")return null;const now=Date.now();const from=per==="week"?ufaDay(now-7*864e5):ufaDay(now).slice(0,8)+"01";return d=>d>=from};
 function gWeekStar(){const ok=gPerOk("week");const ids=[...new Set(Object.values(GSEAL).flatMap(v=>Object.keys(v.picks)))];let best=null;ids.forEach(id=>{const s=scoreUser(id,ok);if(s.n&&s.tot>0&&(!best||s.tot>best.s.tot))best={id,s}});return best}
 const ufaDay=ts=>new Date(ts).toLocaleDateString("sv-SE",{timeZone:"Asia/Yekaterinburg"});
@@ -2625,7 +2640,7 @@ function renderGame(){const el=document.getElementById("gameBody");if(!el||!STAT
    <div class="sec gm-fives">${fives}</div>
    ${!lock&&filled?`<div class="actions"><button class="btn" id="gClear">Очистить состав</button></div>`:""}
    <h3>2. Кто победит</h3>
-   <div class="gm-pick seg"><button data-gw="S" aria-pressed="${GSEL.w==="S"}"${lock?" disabled":""}>Салават</button><button data-gw="O" aria-pressed="${GSEL.w==="O"}"${lock?" disabled":""}>${esc(nx.o)}</button></div>
+   <div class="gm-pick"><button data-gw="S" style="--tc:#00843d;--tx:#fff" aria-pressed="${GSEL.w==="S"}"${lock?" disabled":""}>Салават</button><button data-gw="O" style="--tc:${teamColor(nx.o)[0]};--tx:${teamColor(nx.o)[1]}" aria-pressed="${GSEL.w==="O"}"${lock?" disabled":""}>${esc(nx.o)}</button></div>
    <h3>3. Счёт</h3>
    <div class="gm-score"><label class="vh" for="gGf">Голы Салавата</label><input id="gGf" type="number" inputmode="numeric" min="0" max="15" step="1" value="${esc(GSEL.gf)}"${lock?" disabled":""}><span>Салават : ${esc(nx.o)}</span><label class="vh" for="gGa">Голы соперника</label><input id="gGa" type="number" inputmode="numeric" min="0" max="15" step="1" value="${esc(GSEL.ga)}"${lock?" disabled":""}></div>
    <p class="legend">Ничьих не бывает: если думаешь, что будет овертайм, ставь счёт с победой в один гол, например 3:2.</p>
@@ -2650,7 +2665,7 @@ function renderGame(){const el=document.getElementById("gameBody");if(!el||!STAT
   const nm=x=>x.id===UID?"Ты":(GNAMES[x.id]||"Болельщик");
   const best=k=>{const r=[...rows].filter(x=>x.s.n).sort((a,b)=>b.s[k]-a.s[k])[0];return r&&r.s[k]>0?`${esc(nm(r))}, ${r.s[k]} ${pl(r.s[k],GPTS)}`:"пока никого"};
   const tbl=rows.length?`<div class="tablewrap"><table class="gm-board tight"><thead><tr><th>#</th><th class="l">Игрок</th>${[["mgr","Генм."],["coach","Трен."],["agent","Агент"],["tot","Всего"]].map(([k,t])=>`<th${GSORT===k?' aria-sort="descending"':""}><button data-gs="${k}">${t}</button></th>`).join("")}<th>М</th></tr></thead><tbody>${rows.slice(0,50).map((x,i)=>`<tr class="${x.id===UID?"me":""}"><td>${i+1}</td><td class="l">${esc(nm(x))}${star&&star.id===x.id?` <span aria-label="Прогнозист недели">🏅</span>`:""}</td><td>${x.s.mgr}</td><td>${x.s.coach}</td><td>${x.s.agent}</td><td><b>${x.s.tot}</b></td><td>${x.s.n}</td></tr>`).join("")}</tbody></table></div>`:`<p class="note">${GLOAD?"Загружаю рейтинг…":GERR&&!GERR.startsWith("!")?esc(GERR):"Пока никто не играл. Сделай прогноз первым."}</p>`;
-  el.innerHTML=`<div class="panel"><div class="sec-head"><h2>Моя игра: кто лучший генменеджер, тренер и агент</h2></div>
+  el.innerHTML=`<div class="panel"><div class="sec-head"><h2 class="gm-title">Моя игра: кто лучший генменеджер, тренер и агент</h2></div>
    <p class="note">Собери свой состав на матч с нуля, угадай результат и выбери своего игрока. После матча приложение начислит очки в трёх зачётах, и ты увидишь своё место среди других болельщиков. Один прогноз на матч — в день игры.</p></div>
   ${form}
   ${TG&&TGSUB===false?`<div class="card tg-remind"><h3>🔔 Напоминания о прогнозах</h3><p class="note">Бот напишет в день матча, во сколько начало и до скольких принимается прогноз. Отключить можно командой /remind в боте.</p><button class="btn primary" id="tgRemind">Включить напоминания</button></div>`:""}
