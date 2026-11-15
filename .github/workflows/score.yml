@@ -1,0 +1,38 @@
+name: Очки Телеграм-игры
+
+# Без ИИ: после обновления данных считает очки «Моей игры» для бота
+# и кладёт их в .github/data/results.json — сервер рассылает итоги участникам.
+on:
+  push:
+    branches: [main]
+    paths: [index.html]
+  schedule:
+    - cron: '20 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: { group: score, cancel-in-progress: false }
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Браузер
+        run: npm init -y >/dev/null && npm install playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: Очки
+        run: node .github/qa/score.js index.html
+      - name: Сохранить
+        run: |
+          git config user.name "Claude"
+          git config user.email "noreply@anthropic.com"
+          git add .github/data/results.json
+          if git diff --cached --quiet; then echo "без изменений"; exit 0; fi
+          git commit -m "Очки Телеграм-игры $(date -u +%F)"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push -q origin main && exit 0; sleep 5; done
+          exit 1

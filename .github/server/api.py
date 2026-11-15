@@ -9,6 +9,9 @@
 Ещё он ведёт бота: отвечает на /start кнопкой приложения и в день матча
 напоминает подписчикам, до скольких принимается прогноз.
 
+Лиги с друзьями, итоги матча (очки считает GitHub по тем же правилам, что и приложение,
+и кладёт их в .github/data/results.json) — тоже здесь.
+
 Запуск: python3 api.py   (переменные окружения: BOT_TOKEN, ZV_DATA, ZV_PAGE, ZV_PORT)
 Только стандартная библиотека Python 3.8+.
 """
@@ -28,6 +31,7 @@ import urllib.request
 TOKEN = os.environ.get("BOT_TOKEN", "").strip()
 DATA = os.environ.get("ZV_DATA", "/opt/zvenya/data")
 PAGE = os.environ.get("ZV_PAGE", "/opt/zvenya/repo/index.html")
+RESULTS = os.environ.get("ZV_RESULTS", os.path.join(os.path.dirname(PAGE), ".github/data/results.json"))
 PORT = int(os.environ.get("ZV_PORT", "18787"))
 GDEAD = 600  # приём прогнозов закрывается за 10 минут до начала, секунд
 MSK = timezone(timedelta(hours=3))
@@ -160,7 +164,8 @@ WELCOME = ("Привет! Это «Звенья Салавата» — сост�
            "🏒 Собирай свой состав и сравнивай с тренером\n"
            "🎯 «Моя игра»: прогноз на каждый матч и рейтинг болельщиков\n"
            "📊 Таблица, лидеры КХЛ, карточки игроков\n\n"
-           "В день матча я напомню, до скольких принимается прогноз. Выключить — /remind.")
+           "В день матча я напомню, до скольких принимается прогноз (выключить — /remind).\n"
+           "⚡ Хочешь получать голы «Салавата» во время матча? Жми /goals.")
 
 
 def kb(text="Открыть Звенья", frag=""):
@@ -190,7 +195,8 @@ def set_sub(uid, on):
     with LOCK:
         subs = load("subs")
         if bool(subs.get(uid, {}).get("on")) != on:
-            subs[uid] = {"on": on, "ts": int(time.time())}
+            sb = subs.setdefault(uid, {})
+            sb.update(on=on, ts=int(time.time()))
             save("subs")
 
 
@@ -202,7 +208,8 @@ def bot_setup():
            allowed_updates=["message", "my_chat_member"])
     print("webhook:", (r or {}).get("ok"), (r or {}).get("description", ""), flush=True)
     tg("setMyCommands", commands=[{"command": "start", "description": "Открыть приложение"},
-                                  {"command": "remind", "description": "Напоминания о прогнозах: включить или выключить"}])
+                                  {"command": "remind", "description": "Напоминания о прогнозах: включить или выключить"},
+                                  {"command": "goals", "description": "Голы «Салавата» онлайн: включить или выключить"}])
     tg("setMyShortDescription", short_description="Составы, статистика и прогнозы «Салавата Юлаева»")
     tg("setMyDescription", description="«Звенья Салавата»: составы и пятёрки, статистика игроков, таблица и лидеры КХЛ. "
                                        "Делай прогноз на каждый матч, собирай состав и соревнуйся с другими болельщиками.")
@@ -233,6 +240,12 @@ def bot_update(u):
     if cmd == "/start":
         set_sub(uid, True)
         return {"method": "sendMessage", "chat_id": chat["id"], "text": WELCOME, "reply_markup": kb()}
+    if cmd == "/goals":
+        on = not load("subs").get(uid, {}).get("goals")
+        set_goals(uid, on)
+        msg = "⚡ Голы онлайн включены: во время матчей «Салавата» буду писать о каждом голе." if on else \
+            "Голы онлайн выключены. Включить снова — /goals."
+        return {"method": "sendMessage", "chat_id": chat["id"], "text": msg}
     if cmd in ("/remind", "/stop"):
         on = cmd == "/remind" and not load("subs").get(uid, {}).get("on")
         set_sub(uid, on)
@@ -278,7 +291,278 @@ def reminders():
                         time.sleep(0.05)
         except Exception as e:
             print("напоминания:", e, file=sys.stderr)
+        try:
+            announce()
+        except Exception as e:
+            print("итоги:", e, file=sys.stderr)
         time.sleep(60)
+
+
+# ---------- псевдонимы: в открытой выдаче для GitHub нет ни id, ни имён
+import secrets
+
+
+def pid_of(uid):
+    with LOCK:
+        pids = load("pids")
+        if uid not in pids:
+            taken = set(pids.values())
+            while True:
+                x = secrets.token_hex(5)
+                if x not in taken:
+                    break
+            pids[uid] = x
+            save("pids")
+        return pids[uid]
+
+
+def uid_by_pid():
+    return {v: k for k, v in load("pids").items()}
+
+
+def public_seal():
+    """Закрытые прогнозы последних 60 дней для подсчёта очков на GitHub."""
+    out = {}
+    cut = time.time() - 60 * 86400
+    cal = calendar()
+    for uid, v in load("game").items():
+        for d, x in v.get("picks", {}).items():
+            g = cal.get(d)
+            if g and deadline_passed(d) and g["kickoff"] >= cut:
+                out.setdefault(d, {})[pid_of(uid)] = {k: x.get(k) for k in ("w", "gf", "ga", "f", "d", "g", "a")}
+    return out
+
+
+# ---------- итоги матча: results.json с GitHub -> сообщения участникам
+_res = {"mtime": 0, "data": {}}
+
+
+def results():
+    try:
+        m = os.path.getmtime(RESULTS)
+    except OSError:
+        return _res["data"]
+    if m != _res["mtime"]:
+        try:
+            with open(RESULTS, encoding="utf8") as f:
+                _res.update(mtime=m, data=json.load(f))
+        except ValueError:
+            pass
+    return _res["data"]
+
+
+def ru_pts(n):
+    n = abs(int(n))
+    return "очко" if n % 10 == 1 and n % 100 != 11 else "очка" if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14 else "очков"
+
+
+def announce():
+    res = results()
+    if not res or not (TOKEN and APP):
+        return
+    by = uid_by_pid()
+    names = load("names")
+    sent = load("sent")
+    today = datetime.now(UFA).date()
+    for d, m in sorted(res.items()):
+        try:
+            age = (today - datetime.strptime(d, "%Y-%m-%d").date()).days
+        except ValueError:
+            continue
+        if age > 3 or sent.get(d + "res") or not m.get("s"):
+            continue
+        with LOCK:
+            sent[d + "res"] = int(time.time())
+            save("sent")
+        sc = m["s"]
+        order = sorted(sc, key=lambda p: -sc[p]["tot"])
+        season = {}
+        for dd, mm in res.items():
+            if dd <= d:
+                for p, x in mm.get("s", {}).items():
+                    season[p] = season.get(p, 0) + x["tot"]
+        sorder = sorted(season, key=lambda p: -season[p])
+        line = f"Салават Юлаев {m['gf']}:{m['ga']} {m['o']}" if m.get("h") else f"{m['o']} {m['ga']}:{m['gf']} Салават Юлаев"
+        if m.get("x"):
+            line += f" ({m['x']})"
+        top = order[0]
+        top_name = names.get(by.get(top, ""), "") or "Болельщик"
+        for p in order:
+            uid = by.get(p)
+            if not uid:
+                continue
+            x = sc[p]
+            mine = f"{x['gf']}:{x['ga']}" if m.get("h") else f"{x['ga']}:{x['gf']}"
+            text = (f"🏁 {line}\n"
+                    f"Твой прогноз {mine} — {x['tot']} {ru_pts(x['tot'])} "
+                    f"(генменеджер {x['mgr']}, тренер {x['coach']}, агент {x['agent']}).\n"
+                    f"За матч: {order.index(p) + 1}-е место из {len(order)}. "
+                    f"В сезоне: {sorder.index(p) + 1}-е место, {season[p]} {ru_pts(season[p])}.")
+            if p != top:
+                text += f"\nЛучший за матч — {top_name}: {sc[top]['tot']} {ru_pts(sc[top]['tot'])}."
+            else:
+                text += "\n🥇 Ты лучший за матч!"
+            r = tg("sendMessage", chat_id=int(uid), text=text, reply_markup=kb("Рейтинг и разбор очков", "#game"))
+            if r and r.get("error_code") == 403:
+                set_sub(uid, False)
+            time.sleep(0.05)
+
+
+# ---------- лиги с друзьями
+def my_leagues(uid):
+    return [{"id": k, "name": v["name"], "members": v["members"], "owner": v["owner"] == uid}
+            for k, v in load("leagues").items() if uid in v["members"]]
+
+
+BOT_NAME = {"v": ""}
+
+
+def bot_name():
+    if not BOT_NAME["v"] and TOKEN:
+        r = tg("getMe") or {}
+        BOT_NAME["v"] = (r.get("result") or {}).get("username", "")
+    return BOT_NAME["v"]
+
+
+# ---------- голы онлайн: текстовая трансляция Sports.ru (страница матча отдаётся обычным HTML)
+import html as _html
+
+SR = "https://www.sports.ru"
+UA = {"User-Agent": "Mozilla/5.0 (compatible; zvenya-salavata/1.0)", "Accept-Language": "ru"}
+MONTHS = {"января": 1, "февраля": 2, "марта": 3, "апреля": 4, "мая": 5, "июня": 6, "июля": 7,
+          "августа": 8, "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12}
+SURNAME = r"[А-ЯЁA-Z][а-яёa-zA-Z'\-]+(?: [А-ЯЁA-Z][а-яёa-zA-Z'\-]+)?"
+
+
+def fetch(url):
+    req = urllib.request.Request(url, headers=UA)
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return r.read().decode("utf8", "replace")
+
+
+def text_lines(page):
+    page = re.sub(r"(?is)<(script|style|noscript)\b.*?</\1>", " ", page)
+    page = re.sub(r"(?s)<[^>]+>", "\n", page)
+    return [x for x in (re.sub(r"\s+", " ", _html.unescape(l)).strip() for l in page.split("\n")) if x]
+
+
+def our_surnames():
+    try:
+        with open(PAGE, encoding="utf8") as f:
+            row = re.search(r"^const RAW=(\[.*?\n\]);", f.read(), re.M | re.S)
+        return {r[1].split()[-1] for r in json.loads(row.group(1))}
+    except Exception:
+        return set()
+
+
+def parse_goals(page):
+    """Голы из текста страницы: [(секунда матча, автор, [ассистенты])], по времени, без повторов."""
+    L = text_lines(page)
+    out = []
+    for i, x in enumerate(L):
+        if not re.fullmatch(r"Гол!?", x):
+            continue
+        t = None
+        for j in range(max(0, i - 4), i):
+            m = re.fullmatch(r"(\d{1,3}):(\d{2})", L[j])
+            if m:
+                t = int(m.group(1)) * 60 + int(m.group(2))
+        if t is None or i + 1 >= len(L) or not re.fullmatch(SURNAME, L[i + 1]):
+            continue
+        who = L[i + 1]
+        ast = []
+        if i + 2 < len(L) and re.fullmatch(SURNAME + r"(?:, " + SURNAME + r")?", L[i + 2]):
+            ast = [a.strip() for a in L[i + 2].split(",")]
+        if any(o[1] == who and abs(o[0] - t) <= 30 for o in out):
+            continue
+        out.append((t, who, ast))
+    return sorted(out)
+
+
+def page_match(page):
+    """Дата и есть ли «Салават» на странице матча."""
+    txt = " ".join(text_lines(page)[:400])
+    m = re.search(r"(\d{1,2}) (" + "|".join(MONTHS) + r") (\d{4})", txt)
+    d = f"{m.group(3)}-{MONTHS[m.group(2)]:02d}-{int(m.group(1)):02d}" if m else ""
+    return d, "Салават" in txt, txt
+
+
+def sr_match_id(d, opp):
+    """Номер матча на Sports.ru: ищем в календаре клуба, проверяем дату и соперника, запоминаем."""
+    ids = load("srids")
+    if d in ids:
+        return ids[d]
+    cal = fetch(SR + "/hockey/club/salavat-yulaev/calendar/")
+    seen = load("srseen")
+    for mid in dict.fromkeys(re.findall(r"/hockey/match/(\d+)/", cal)):
+        if mid in seen:
+            continue
+        try:
+            pd, sal, txt = page_match(fetch(f"{SR}/hockey/match/{mid}/"))
+        except Exception:
+            continue
+        with LOCK:
+            seen[mid] = pd
+            save("srseen")
+            if sal and pd:
+                ids.setdefault(pd, mid)
+                save("srids")
+        if pd == d and sal and opp.split()[0] in txt:
+            return mid
+        time.sleep(1)
+    return ids.get(d)
+
+
+def live_goals():
+    """Во время матча раз в минуту читает трансляцию и рассылает новые голы."""
+    while True:
+        try:
+            now = time.time()
+            d = datetime.fromtimestamp(now, UFA).strftime("%Y-%m-%d")
+            g = calendar().get(d)
+            if g and TOKEN and g["kickoff"] - 300 <= now <= g["kickoff"] + 4 * 3600:
+                mid = sr_match_id(d, g["o"])
+                if mid:
+                    goals = parse_goals(fetch(f"{SR}/hockey/match/{mid}/"))
+                    ours = our_surnames()
+                    sent = load("sent")
+                    key = d + "goals"
+                    done = sent.get(key)
+                    if done is None:  # первый раз видим матч: если он давно идёт, старые голы не шлём
+                        done = [f"{t}|{w}" for t, w, _ in goals] if now - g["kickoff"] > 900 else []
+                    us = them = 0
+                    for t, who, ast in goals:
+                        mine = who.split()[-1] in ours
+                        us, them = (us + 1, them) if mine else (us, them + 1)
+                        k = f"{t}|{who}"
+                        if k in done:
+                            continue
+                        done.append(k)
+                        score = f"Салават Юлаев {us}:{them} {g['o']}" if g.get("home") else f"{g['o']} {them}:{us} Салават Юлаев"
+                        head = "🚨 ГОЛ «САЛАВАТА»!" if mine else f"Гол {g['o']}"
+                        text = f"{head}\n{score}\n🏒 {who}{' (' + ', '.join(ast) + ')' if ast else ''}, {t // 60}:{t % 60:02d}"
+                        for uid, sb in list(load("subs").items()):
+                            if sb.get("on") and sb.get("goals"):
+                                r = tg("sendMessage", chat_id=int(uid), text=text, disable_notification=not mine)
+                                if r and r.get("error_code") == 403:
+                                    set_sub(uid, False)
+                                time.sleep(0.05)
+                    with LOCK:
+                        sent[key] = done
+                        save("sent")
+        except Exception as e:
+            print("голы онлайн:", e, file=sys.stderr)
+        time.sleep(60)
+
+
+def set_goals(uid, on):
+    with LOCK:
+        subs = load("subs")
+        sb = subs.setdefault(uid, {"on": True, "ts": int(time.time())})
+        sb["goals"] = on
+        if on:
+            sb["on"] = True
+        save("subs")
 
 
 class H(BaseHTTPRequestHandler):
@@ -320,11 +604,15 @@ class H(BaseHTTPRequestHandler):
         p = self.parts()
         if p[:2] == ["api", "health"]:
             return self.send(200, {"ok": True, "games": len(calendar())})
+        if p[:3] == ["api", "public", "seal"]:
+            return self.send(200, public_seal())
         u = self.user()
         if not u:
             return self.send(401, {"error": "нет подписи Телеграма"})
         if p[:2] == ["api", "me"]:
-            return self.send(200, {"id": u["id"], "name": u["name"], "sub": bool(load("subs").get(u["id"], {}).get("on"))})
+            return self.send(200, {"id": u["id"], "name": u["name"], "sub": bool(load("subs").get(u["id"], {}).get("on")), "goals": bool(load("subs").get(u["id"], {}).get("goals"))})
+        if p[:2] == ["api", "leagues"]:
+            return self.send(200, {"leagues": my_leagues(u["id"]), "bot": bot_name()})
         if len(p) == 3 and p[1] == "c":
             return self.send(200, {"docs": self.collection(p[2], u)})
         if len(p) == 4 and p[1] == "d":
@@ -419,6 +707,7 @@ class H(BaseHTTPRequestHandler):
                         return self.send(400, {"error": "прогноз заполнен неверно"})
                     mine["picks"][d] = cp
                     added += 1
+                    pid_of(i)
                 mine["ts"] = now
                 save("game")
             return self.send(200, {"ok": True, "added": added})
@@ -445,13 +734,57 @@ class H(BaseHTTPRequestHandler):
                 return self.send(400, {"error": str(e)})
             names = load("names")
             return self.send(200, {str(x): {"name": names.get(str(x), "")} for x in ids[:2000]})
-        if p[:2] == ["api", "subscribe"]:
+        if p[:2] == ["api", "league"] and len(p) == 3:
             try:
-                on = bool(self.body().get("on"))
+                b = self.body()
             except ValueError as e:
                 return self.send(400, {"error": str(e)})
-            set_sub(u["id"], on)
-            return self.send(200, {"ok": True, "sub": on})
+            with LOCK:
+                lg = load("leagues")
+                if p[2] == "create":
+                    name = re.sub(r"\s+", " ", str(b.get("name") or "")).strip()[:40]
+                    if len(name) < 2:
+                        return self.send(400, {"error": "Придумай название"})
+                    if sum(1 for v in lg.values() if v["owner"] == u["id"]) >= 10:
+                        return self.send(409, {"error": "Можно создать не больше 10 лиг"})
+                    lid = secrets.token_hex(3)
+                    while lid in lg:
+                        lid = secrets.token_hex(3)
+                    lg[lid] = {"name": name, "owner": u["id"], "members": [u["id"]], "ts": int(time.time())}
+                    save("leagues")
+                    return self.send(200, {"id": lid, "leagues": my_leagues(u["id"])})
+                lid = str(b.get("id") or "")
+                if lid not in lg:
+                    return self.send(404, {"error": "Лига не найдена"})
+                mem = lg[lid]["members"]
+                if p[2] == "join":
+                    if u["id"] not in mem:
+                        if len(mem) >= 300:
+                            return self.send(409, {"error": "В лиге уже 300 участников"})
+                        mem.append(u["id"])
+                        save("leagues")
+                    return self.send(200, {"ok": True, "leagues": my_leagues(u["id"])})
+                if p[2] == "leave":
+                    if u["id"] in mem:
+                        mem.remove(u["id"])
+                        if not mem:
+                            del lg[lid]
+                        elif lg[lid]["owner"] == u["id"]:
+                            lg[lid]["owner"] = mem[0]
+                        save("leagues")
+                    return self.send(200, {"ok": True, "leagues": my_leagues(u["id"])})
+            return self.send(404, {"error": "нет такого адреса"})
+        if p[:2] == ["api", "subscribe"]:
+            try:
+                b = self.body()
+            except ValueError as e:
+                return self.send(400, {"error": str(e)})
+            if "goals" in b:
+                set_goals(u["id"], bool(b.get("goals")))
+            if "on" in b:
+                set_sub(u["id"], bool(b.get("on")))
+            sb = load("subs").get(u["id"], {})
+            return self.send(200, {"ok": True, "sub": bool(sb.get("on")), "goals": bool(sb.get("goals"))})
         self.send(404, {"error": "нет такого адреса"})
 
 
@@ -468,11 +801,20 @@ def watch_self():
             pass
 
 
+if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--probe":
+    # проверка разбора трансляции: python3 api.py --probe 1874359
+    pg = fetch(f"{SR}/hockey/match/{sys.argv[2]}/")
+    print("страница:", page_match(pg)[:2])
+    for t, w, a in parse_goals(pg):
+        print(f"{t // 60}:{t % 60:02d}", w, a)
+    sys.exit(0)
+
 if __name__ == "__main__":
     if not TOKEN:
         print("нет BOT_TOKEN — запись и чтение работать не будут", file=sys.stderr)
     threading.Thread(target=watch_self, daemon=True).start()
     threading.Thread(target=bot_setup, daemon=True).start()
     threading.Thread(target=reminders, daemon=True).start()
+    threading.Thread(target=live_goals, daemon=True).start()
     print(f"api на 127.0.0.1:{PORT}, матчей в календаре: {len(calendar())}", flush=True)
     ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()
