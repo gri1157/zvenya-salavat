@@ -486,6 +486,18 @@ html:root[data-ui="lite"][data-zt="dark"]{--page:radial-gradient(1100px 700px at
 .lg-ghost small{font-weight:600;color:var(--muted);font-size:11px}
 :root[data-zt="dark"] .lg-ghost{background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5),inset 0 10px 18px -6px rgba(255,255,255,.25),0 18px 40px rgba(0,0,0,.55)}
 @keyframes lgPop{from{scale:.6;opacity:0}to{scale:1;opacity:1}}
+/* «Моя игра»: контрастные зелёные рамки полей и состава */
+:root{--frame:rgba(0,132,61,.78)}
+:root[data-zt="dark"]{--frame:rgba(47,211,111,.62)}
+@media (prefers-color-scheme:dark){:root:not([data-zt="light"]){--frame:rgba(47,211,111,.62)}}
+.gm-fives .five{border:1.5px solid color-mix(in srgb,var(--frame) 45%,transparent)!important}
+.gm-fives .slot{border:1.5px solid var(--frame)!important}
+.gm-fives .slot.empty-g{border-style:dashed!important;background:color-mix(in srgb,var(--sy) 8%,transparent)!important}
+.gm-fives .slot.empty-g .snm{color:var(--sy)!important;font-weight:700}
+.gm-score input,#gAgent{border:2px solid var(--frame)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--sy) 10%,transparent)!important;font-weight:800;color:var(--ink)}
+.gm-score input:focus,#gAgent:focus{outline:none;border-color:var(--sy)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--sy) 25%,transparent)!important}
+.gm-pick button{border:1.5px solid var(--frame)!important}
+.gm-score input:disabled,#gAgent:disabled{opacity:.85}
 /* капля, которую можно тащить пальцем */
 .lg-drag{touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .lg-drag a,.lg-drag button{-webkit-user-drag:none}
