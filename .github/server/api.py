@@ -176,8 +176,12 @@ DESCRIPTION = ("🏒 Звенья Салавата — игра для боле�
 SHORT_DESCRIPTION = "🏒 Собирай состав, выбирай топового игрока, получай очки и соревнуйся с болельщиками «Салавата»!"
 
 
-def kb(text="Открыть Звенья", frag=""):
-    return {"inline_keyboard": [[{"text": text, "web_app": {"url": APP + "/" + frag}}]]}
+def kb(text="Открыть Звенья", frag="", style="success"):
+    """Кнопка приложения; style: success — зелёная, primary — синяя, danger — красная."""
+    b = {"text": text, "web_app": {"url": APP + "/" + frag}}
+    if style:
+        b["style"] = style
+    return {"inline_keyboard": [[b]]}
 
 
 def tg(method, **params):
@@ -246,7 +250,7 @@ def bot_update(u):
     cmd = text.split()[0].split("@")[0].lower() if text else ""
     if cmd == "/start":
         set_sub(uid, True)
-        return {"method": "sendMessage", "chat_id": chat["id"], "text": WELCOME, "parse_mode": "HTML", "reply_markup": kb("▶️ Играть")}
+        return {"method": "sendMessage", "chat_id": chat["id"], "text": WELCOME, "parse_mode": "HTML", "reply_markup": kb("🏒 ИГРАТЬ")}
     if cmd == "/goals":
         on = not load("subs").get(uid, {}).get("goals")
         set_goals(uid, on)
