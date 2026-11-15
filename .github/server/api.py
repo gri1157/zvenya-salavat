@@ -6,6 +6,9 @@
 Прогноз принимается только в день матча и до закрытия приёма (за 10 минут до начала),
 изменить отправленный прогноз нельзя — это проверяет сервер, а не телефон.
 
+Ещё он ведёт бота: отвечает на /start кнопкой приложения и в день матча
+напоминает подписчикам, до скольких принимается прогноз.
+
 Запуск: python3 api.py   (переменные окружения: BOT_TOKEN, ZV_DATA, ZV_PAGE, ZV_PORT)
 Только стандартная библиотека Python 3.8+.
 """
@@ -20,6 +23,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qsl, unquote
+import urllib.request
 
 TOKEN = os.environ.get("BOT_TOKEN", "").strip()
 DATA = os.environ.get("ZV_DATA", "/opt/zvenya/data")
@@ -73,7 +77,7 @@ def calendar():
             for g in json.loads(row.group(1)):
                 d, t, opp = g[0], g[1] or "23:59", g[2]
                 kick = datetime.fromisoformat(f"{d}T{t}:00").replace(tzinfo=MSK).timestamp()
-                games[d] = {"o": opp, "kickoff": kick, "deadline": kick - GDEAD}
+                games[d] = {"o": opp, "home": bool(g[3]) if len(g) > 3 else True, "kickoff": kick, "deadline": kick - GDEAD}
             _cal.update(mtime=m, games=games)
         except Exception as e:  # не ломаем сервер из-за календаря
             print("календарь не прочитан:", e, file=sys.stderr)
@@ -140,6 +144,143 @@ def lineup(v, k, w):
     return out
 
 
+# ---------- бот: приветствие, команды, напоминания
+def site_host():
+    try:
+        with open("/etc/caddy/zvenya.caddy", encoding="utf8") as f:
+            return f.read().split()[0]
+    except (OSError, IndexError):
+        return os.environ.get("ZV_HOST", "")
+
+
+HOST = site_host()
+APP = "https://" + HOST if HOST else ""
+HOOK_SECRET = hmac.new(TOKEN.encode(), b"zvenya-webhook", hashlib.sha256).hexdigest()[:48] if TOKEN else ""
+WELCOME = ("Привет! Это «Звенья Салавата» — составы, статистика и прогнозы «Салавата Юлаева».\n\n"
+           "🏒 Собирай свой состав и сравнивай с тренером\n"
+           "🎯 «Моя игра»: прогноз на каждый матч и рейтинг болельщиков\n"
+           "📊 Таблица, лидеры КХЛ, карточки игроков\n\n"
+           "В день матча я напомню, до скольких принимается прогноз. Выключить — /remind.")
+
+
+def kb(text="Открыть Звенья", frag=""):
+    return {"inline_keyboard": [[{"text": text, "web_app": {"url": APP + "/" + frag}}]]}
+
+
+def tg(method, **params):
+    if not TOKEN:
+        return None
+    req = urllib.request.Request(f"https://api.telegram.org/bot{TOKEN}/{method}",
+                                 data=json.dumps(params, ensure_ascii=False).encode(),
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        try:
+            return json.loads(e.read())
+        except ValueError:
+            return {"ok": False, "error_code": e.code}
+    except Exception as e:
+        print("telegram:", method, e, file=sys.stderr)
+        return None
+
+
+def set_sub(uid, on):
+    with LOCK:
+        subs = load("subs")
+        if bool(subs.get(uid, {}).get("on")) != on:
+            subs[uid] = {"on": on, "ts": int(time.time())}
+            save("subs")
+
+
+def bot_setup():
+    if not (TOKEN and APP):
+        print("бот не настроен: нет токена или адреса сайта", file=sys.stderr)
+        return
+    r = tg("setWebhook", url=APP + "/api/tg/hook", secret_token=HOOK_SECRET,
+           allowed_updates=["message", "my_chat_member"])
+    print("webhook:", (r or {}).get("ok"), (r or {}).get("description", ""), flush=True)
+    tg("setMyCommands", commands=[{"command": "start", "description": "Открыть приложение"},
+                                  {"command": "remind", "description": "Напоминания о прогнозах: включить или выключить"}])
+    tg("setMyShortDescription", short_description="Составы, статистика и прогнозы «Салавата Юлаева»")
+    tg("setMyDescription", description="«Звенья Салавата»: составы и пятёрки, статистика игроков, таблица и лидеры КХЛ. "
+                                       "Делай прогноз на каждый матч, собирай состав и соревнуйся с другими болельщиками.")
+
+
+def bot_update(u):
+    """Ответ на сообщение боту — сразу в ответе вебхука, без лишних запросов."""
+    cm = u.get("my_chat_member")
+    if cm and cm.get("chat", {}).get("type") == "private":
+        st = cm.get("new_chat_member", {}).get("status")
+        set_sub(str(cm["chat"]["id"]), st == "member")
+        return None
+    m = u.get("message") or {}
+    chat = m.get("chat") or {}
+    if chat.get("type") != "private":
+        return None
+    uid = str(chat["id"])
+    fr = m.get("from") or {}
+    name = " ".join(x for x in [fr.get("first_name", ""), fr.get("last_name", "")] if x).strip()
+    if name:
+        with LOCK:
+            names = load("names")
+            if names.get(uid) != name[:60]:
+                names[uid] = name[:60]
+                save("names")
+    text = (m.get("text") or "").strip()
+    cmd = text.split()[0].split("@")[0].lower() if text else ""
+    if cmd == "/start":
+        set_sub(uid, True)
+        return {"method": "sendMessage", "chat_id": chat["id"], "text": WELCOME, "reply_markup": kb()}
+    if cmd in ("/remind", "/stop"):
+        on = cmd == "/remind" and not load("subs").get(uid, {}).get("on")
+        set_sub(uid, on)
+        msg = "🔔 Напоминания включены: в день матча напишу, до скольких принимается прогноз." if on else \
+            "🔕 Напоминания выключены. Включить снова — /remind."
+        return {"method": "sendMessage", "chat_id": chat["id"], "text": msg}
+    return {"method": "sendMessage", "chat_id": chat["id"],
+            "text": "Я открываю «Звенья Салавата» — жми кнопку 👇\nНапоминания о прогнозах: /remind", "reply_markup": kb()}
+
+
+def match_line(g):
+    return f"Салават Юлаев — {g['o']}" if g.get("home") else f"{g['o']} — Салават Юлаев"
+
+
+def reminders():
+    """Каждую минуту: в день матча два напоминания тем, кто подписан и ещё не сделал прогноз."""
+    while True:
+        try:
+            now = time.time()
+            d = datetime.fromtimestamp(now, UFA).strftime("%Y-%m-%d")
+            g = calendar().get(d)
+            if g and TOKEN and APP and now < g["deadline"]:
+                left = g["deadline"] - now
+                kind = "last" if left <= 45 * 60 else "day" if left <= 4 * 3600 else None
+                sent = load("sent")
+                if kind and not sent.get(d + kind) and not (kind == "day" and left < 55 * 60):
+                    with LOCK:
+                        sent[d + kind] = int(now)
+                        save("sent")
+                    k = datetime.fromtimestamp(g["kickoff"], UFA).strftime("%H:%M")
+                    dl = datetime.fromtimestamp(g["deadline"], UFA).strftime("%H:%M")
+                    if kind == "day":
+                        text = f"🏒 Сегодня {match_line(g)}, начало в {k} по Уфе.\nПрогноз принимается до {dl}. Собери состав и угадай счёт!"
+                    else:
+                        text = f"⏰ Через {max(1, round(left / 60))} минут закрывается приём прогнозов на {match_line(g)} (до {dl} по Уфе). Успевай!"
+                    picks = load("game")
+                    for uid, sb in list(load("subs").items()):
+                        if not sb.get("on") or d in picks.get(uid, {}).get("picks", {}):
+                            continue
+                        r = tg("sendMessage", chat_id=int(uid), text=text, reply_markup=kb("Сделать прогноз", "#game"))
+                        if r and r.get("error_code") == 403:
+                            set_sub(uid, False)
+                        time.sleep(0.05)
+        except Exception as e:
+            print("напоминания:", e, file=sys.stderr)
+        time.sleep(60)
+
+
 class H(BaseHTTPRequestHandler):
     server_version = "zvenya"
 
@@ -183,7 +324,7 @@ class H(BaseHTTPRequestHandler):
         if not u:
             return self.send(401, {"error": "нет подписи Телеграма"})
         if p[:2] == ["api", "me"]:
-            return self.send(200, {"id": u["id"], "name": u["name"]})
+            return self.send(200, {"id": u["id"], "name": u["name"], "sub": bool(load("subs").get(u["id"], {}).get("on"))})
         if len(p) == 3 and p[1] == "c":
             return self.send(200, {"docs": self.collection(p[2], u)})
         if len(p) == 4 and p[1] == "d":
@@ -285,6 +426,15 @@ class H(BaseHTTPRequestHandler):
 
     def do_POST(self):
         p = self.parts()
+        if p[:3] == ["api", "tg", "hook"]:
+            if not HOOK_SECRET or not hmac.compare_digest(self.headers.get("X-Telegram-Bot-Api-Secret-Token", ""), HOOK_SECRET):
+                return self.send(403, {"error": "нет"})
+            try:
+                ans = bot_update(self.body())
+            except Exception as e:
+                print("бот:", e, file=sys.stderr)
+                ans = None
+            return self.send(200, ans or {})
         u = self.user()
         if not u:
             return self.send(401, {"error": "нет подписи Телеграма"})
@@ -295,6 +445,13 @@ class H(BaseHTTPRequestHandler):
                 return self.send(400, {"error": str(e)})
             names = load("names")
             return self.send(200, {str(x): {"name": names.get(str(x), "")} for x in ids[:2000]})
+        if p[:2] == ["api", "subscribe"]:
+            try:
+                on = bool(self.body().get("on"))
+            except ValueError as e:
+                return self.send(400, {"error": str(e)})
+            set_sub(u["id"], on)
+            return self.send(200, {"ok": True, "sub": on})
         self.send(404, {"error": "нет такого адреса"})
 
 
@@ -315,5 +472,7 @@ if __name__ == "__main__":
     if not TOKEN:
         print("нет BOT_TOKEN — запись и чтение работать не будут", file=sys.stderr)
     threading.Thread(target=watch_self, daemon=True).start()
+    threading.Thread(target=bot_setup, daemon=True).start()
+    threading.Thread(target=reminders, daemon=True).start()
     print(f"api на 127.0.0.1:{PORT}, матчей в календаре: {len(calendar())}", flush=True)
     ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()

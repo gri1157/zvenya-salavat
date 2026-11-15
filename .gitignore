@@ -4,3 +4,6 @@ qa-prompt.md
 report.md
 package.json
 package-lock.json
+__pycache__/
+*.pyc
+.qa-page.html
