@@ -1,0 +1,13 @@
+name: Проба трансляции
+on:
+  workflow_dispatch:
+    inputs:
+      date: { description: 'Дата матча ГГГГ-ММ-ДД', required: true }
+      opp: { description: 'Соперник', required: true }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .github/server/probe.py "${{ inputs.date }}" "${{ inputs.opp }}"
