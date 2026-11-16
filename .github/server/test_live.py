@@ -72,7 +72,7 @@ def fake_fetch(url):
 api.fetch = fake_fetch
 api.tg = lambda method, **kw: msgs.append(kw["text"]) or {"ok": True}
 api.calendar = lambda: {"2026-11-16": {"o": "Адмирал", "home": True, "kickoff": KICK, "deadline": KICK - 600}}
-api._cache["subs"] = {"1": {"on": True, "goals": True}, "2": {"on": True}}
+api._cache["subs"] = {"1": {"on": True, "goals": True}, "2": {"on": True, "goals": False}, "3": {"on": False}}
 ok = True
 
 
@@ -148,5 +148,54 @@ try:
 except OSError:  # запасной путь (Sports.ru) тоже недоступен — цикл сервера это переживает
     got = []
 expect("источник недоступен — без ложных сообщений", got, [])
+
+# финальная сирена: итог, предварительные очки, голосование, чат болельщиков
+api._cache["sent"] = {}
+api._cache["seids"] = {"2026-11-16": "129367"}
+api._cache["groups"] = {"-100500": {"on": True, "title": "Фан-чат"}}
+api._cache["names"] = {"1": "Гриша", "5": "Петя"}
+api._cache["game"] = {"1": {"picks": {"2026-11-16": {"w": "S", "gf": 6, "ga": 5}}},
+                      "5": {"picks": {"2026-11-16": {"w": "S", "gf": 3, "ga": 2}}},
+                      "7": {"picks": {"2026-11-16": {"w": "O", "gf": 1, "ga": 2}}}}
+api._cache["mvp"] = {}
+api.BOT_NAME["v"] = "zvenya_salavat_bot"
+state["se_down"] = False
+sent_to = []
+api.tg = lambda method, **kw: (msgs.append(kw["text"]), sent_to.append((kw.get("chat_id"), kw["text"].split("\n")[0], bool(kw.get("reply_markup"))))) and {"ok": True}
+JS = ('<script>{"match":{"id":129367,"date":"2026-11-16T17:00:00","score":{"scoreByPeriod":{"periods":[]},"homeScore":6,"guestScore":5,'
+      '"scoreType":"","overtime":0,"techResult":"","relative":false},"status":{"code":"%s","name":"x"}},'
+      '"todayMatches":{"matches":[{"id":129365,"date":"2026-11-16T19:30:00","score":{"homeScore":1,"guestScore":2,"scoreType":"","overtime":0},"status":{"code":"finished","name":"Матч окончен"}}]}}</script>')
+state["page"] = page(3425) + JS % "live"
+tick(7000)
+expect("чужой «Матч окончен» в боковой колонке не считается финалом", api._cache["sent"]["2026-11-16live"].get("fin"), None)
+expect("состояние матча из данных страницы", api.se_state(state["page"], "129367")["code"], "live")
+state["page"] = page(3425) + JS % "finished"
+del sent_to[:]
+got = tick(7100)
+expect("финал: итог всем подписанным", [x for x in sent_to if x[1] == "🏁 Матч окончен!"], [(1, "🏁 Матч окончен!", False), (-100500, "🏁 Матч окончен!", True)])
+expect("финал: счёт и настроение", got[0], "🏁 Матч окончен!\nСалават Юлаев 6:5 Адмирал\nПобеда «Салавата»! 🎉")
+expect("финал: в чате — лучшие прогнозы", "🥇 Гриша — 150 очков" in got[1] and "🥈 Петя — 120 очков" in got[1], True)
+mine = [m for m in got if m.startswith("🎯")]
+expect("финал: очки генменеджера каждому", [m.split("\n")[0] for m in mine],
+       ["🎯 Твой прогноз 6:5: генменеджер — 150 очков (победитель +100, точный счёт +50).",
+        "🎯 Твой прогноз 3:2: генменеджер — 120 очков (победитель +100, разница +20).",
+        "🎯 Твой прогноз 1:2: генменеджер — 0 очков."])
+expect("финал: голосование с кандидатами-авторами голов", api._cache["mvp"]["2026-11-16"]["c"],
+       ["Данил Алалыкин", "Александр Жаровский", "Мэттью Маджо", "Вадим Шипачев", "🧤 Вратарь «Салавата»"])
+expect("финал: один раз", tick(7200), [])
+r = api.bot_update({"callback_query": {"id": "q1", "from": {"id": 5}, "data": "mvp|2026-11-16|3"}})
+expect("голос за лучшего игрока", (r["method"], r["text"]), ("answerCallbackQuery", "Голос принят: Вадим Шипачев.\nЛидирует Вадим Шипачев — 1 из 1"))
+api.bot_update({"callback_query": {"id": "q2", "from": {"id": 5}, "data": "mvp|2026-11-16|0"}})
+expect("повторный голос заменяет прежний", api.mvp_tally("2026-11-16")["c"][0], {"name": "Данил Алалыкин", "n": 1})
+expect("счёт в плашке приложения: матч окончен", (api.LIVE["us"], api.LIVE["them"], api.LIVE["fin"]), (6, 5, True))
+r = api.bot_update({"my_chat_member": {"chat": {"id": -200, "type": "supergroup", "title": "Уфа хоккей"}, "new_chat_member": {"status": "member"}}})
+expect("бот добавлен в чат — приветствие и запись", (r["chat_id"], api._cache["groups"]["-200"]["on"]), (-200, True))
+r = api.bot_update({"message": {"chat": {"id": -200, "type": "supergroup"}, "text": "/table@zvenya_salavat_bot"}})
+expect("рейтинг в чате", r["text"].startswith("🏆"), True)
+expect("обычные сообщения в чате бот не трогает", api.bot_update({"message": {"chat": {"id": -200, "type": "supergroup"}, "text": "привет"}}), None)
+r = api.bot_update({"message": {"chat": {"id": 1, "type": "private"}, "from": {"first_name": "Гриша"}, "text": "/admin"}})
+expect("панель владельца — первому пользователю", r["text"].startswith("📊 Панель владельца") and "Открыли бота: 2" in r["text"], True)
+r = api.bot_update({"message": {"chat": {"id": 5, "type": "private"}, "from": {"first_name": "Петя"}, "text": "/admin"}})
+expect("панель владельца закрыта для остальных", r["text"].startswith("📊"), False)
 print("ВСЁ В ПОРЯДКЕ" if ok else "ЕСТЬ ОШИБКИ")
 sys.exit(0 if ok else 1)

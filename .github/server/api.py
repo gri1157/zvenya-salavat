@@ -165,7 +165,8 @@ WELCOME = ("<b>🏒 Звенья Салавата</b>\n\n"
            "🎯 Угадывай счёт матча\n"
            "🏆 Получай очки и соревнуйся с другими болельщиками\n\n"
            "🔔 В день матча напомню о прогнозе — /remind\n"
-           "⚡ Матч онлайн: начало периодов и каждый гол — /goals")
+           "⚡ Во время матча пришлю голы, периоды и итог (выключить — /goals)\n"
+           "👥 Добавь меня в чат болельщиков — буду вести матч и там")
 DESCRIPTION = ("🏒 Звенья Салавата — игра для болельщиков «Салавата Юлаева»\n\n"
                "▶️ Заходи в игру\n"
                "🧩 Выставляй свой состав на матч\n"
@@ -217,25 +218,241 @@ def bot_setup():
         print("бот не настроен: нет токена или адреса сайта", file=sys.stderr)
         return
     r = tg("setWebhook", url=APP + "/api/tg/hook", secret_token=HOOK_SECRET,
-           allowed_updates=["message", "my_chat_member"])
+           allowed_updates=["message", "my_chat_member", "callback_query"])
     print("webhook:", (r or {}).get("ok"), (r or {}).get("description", ""), flush=True)
     tg("setMyCommands", commands=[{"command": "start", "description": "Открыть приложение"},
                                   {"command": "remind", "description": "Напоминания о прогнозах: включить или выключить"},
-                                  {"command": "goals", "description": "Матч онлайн: периоды и голы — включить или выключить"}])
+                                  {"command": "goals", "description": "Матч онлайн: периоды и голы — включить или выключить"},
+                                  {"command": "table", "description": "Рейтинг прогнозистов"}])
     tg("setChatMenuButton", menu_button={"type": "web_app", "text": "Играть", "web_app": {"url": APP + "/"}})
     tg("setMyShortDescription", short_description=SHORT_DESCRIPTION)
     tg("setMyDescription", description=DESCRIPTION)
 
 
+# ---------- чаты болельщиков: бот, добавленный в группу, ведёт матч и там
+def kb_url(text="🏒 Играть", param="game"):
+    """В группах кнопка-приложение запрещена Телеграмом, поэтому обычная ссылка на бота."""
+    n = bot_name()
+    if not n:
+        return None
+    return {"inline_keyboard": [[{"text": text, "url": f"https://t.me/{n}?startapp={param}", "style": "success"}]]}
+
+
+def group_push(text, silent=False, **extra):
+    for cid, gr in list(load("groups").items()):
+        if not gr.get("on"):
+            continue
+        r = tg("sendMessage", chat_id=int(cid), text=text, disable_notification=silent, **extra)
+        if r and r.get("error_code") == 403:
+            with LOCK:
+                load("groups")[cid]["on"] = False
+                save("groups")
+        time.sleep(0.05)
+
+
+def season_table(limit=10):
+    """Рейтинг сезона по подсчитанным матчам: [(имя, очки, матчей)]."""
+    by = uid_by_pid()
+    names = load("names")
+    tot = {}
+    for d, m in results().items():
+        for p, x in m.get("s", {}).items():
+            t = tot.setdefault(p, [0, 0])
+            t[0] += x["tot"]
+            t[1] += 1
+    rows = sorted(tot.items(), key=lambda kv: -kv[1][0])[:limit]
+    return [(names.get(by.get(p, ""), "") or "Болельщик", v[0], v[1]) for p, v in rows]
+
+
+def table_text():
+    rows = season_table()
+    if not rows:
+        return "🏆 Рейтинг прогнозистов пока пуст: очки появятся после первого подсчитанного матча.\nСделай прогноз на ближайший матч 👇"
+    medals = {0: "🥇", 1: "🥈", 2: "🥉"}
+    return "🏆 Рейтинг прогнозистов сезона\n" + "\n".join(
+        f"{medals.get(i, str(i + 1) + '.')} {n} — {pts} {ru_pts(pts)} ({gp} м.)" for i, (n, pts, gp) in enumerate(rows))
+
+
+def owner_id():
+    o = load("owner").get("id")
+    if o:
+        return o
+    names = load("names")
+    return next(iter(names), None)  # первый, кто написал боту, — владелец
+
+
+def admin_text():
+    names, subs, game = load("names"), load("subs"), load("game")
+    on = sum(1 for v in subs.values() if v.get("on"))
+    live = sum(1 for v in subs.values() if v.get("on") and v.get("goals", True))
+    groups = load("groups")
+    per = {}
+    for uid, v in game.items():
+        for d in v.get("picks", {}):
+            per[d] = per.get(d, 0) + 1
+    last = sorted(per.items())[-6:]
+    cal = calendar()
+    now = time.time()
+    nxt = min((g for g in cal.items() if g[1]["kickoff"] > now), key=lambda g: g[1]["kickoff"], default=None)
+    lines = ["📊 Панель владельца",
+             f"Открыли бота: {len(names)}",
+             f"Получают напоминания: {on}",
+             f"Матч онлайн включён: {live}",
+             f"Чаты болельщиков: {sum(1 for g in groups.values() if g.get('on'))}",
+             f"Лиги: {len(load('leagues'))}",
+             f"Голосов в народном составе: {len(load('votes'))}",
+             f"Сделали хотя бы один прогноз: {sum(1 for v in game.values() if v.get('picks'))}",
+             "", "Прогнозов по матчам:"]
+    lines += [f"• {d[8:10]}.{d[5:7]} {cal.get(d, {}).get('o', '')}: {n}" for d, n in last] or ["• пока нет"]
+    mv = load("mvp")
+    if mv:
+        d = max(mv)
+        lines += ["", f"Голосов за лучшего игрока {d[8:10]}.{d[5:7]}: {len(mv[d].get('v', {}))}"]
+    if nxt:
+        k = datetime.fromtimestamp(nxt[1]["kickoff"], UFA).strftime("%d.%m в %H:%M")
+        lines += ["", f"Следующий матч: {nxt[1]['o']}, {k} по Уфе; прогнозов уже {per.get(nxt[0], 0)}"]
+    try:
+        age = int((now - os.path.getmtime(PAGE)) / 3600)
+        lines.append(f"Данные приложения обновлены {age} ч назад")
+    except OSError:
+        pass
+    return "\n".join(lines)
+
+
+# ---------- лучший игрок матча: голосование кнопками после финальной сирены
+def mvp_markup(d, cands):
+    return {"inline_keyboard": [[{"text": c, "callback_data": f"mvp|{d}|{i}"}] for i, c in enumerate(cands)]}
+
+
+def mvp_tally(d):
+    mv = load("mvp").get(d)
+    if not mv:
+        return None
+    cnt = [0] * len(mv["c"])
+    for i in mv.get("v", {}).values():
+        if 0 <= i < len(cnt):
+            cnt[i] += 1
+    order = sorted(range(len(cnt)), key=lambda i: -cnt[i])
+    return {"d": d, "o": mv.get("o", ""), "total": sum(cnt), "open": time.time() - mv.get("ts", 0) < 20 * 3600,
+            "c": [{"name": mv["c"][i], "n": cnt[i]} for i in order]}
+
+
+def mvp_vote(q):
+    """Нажатие кнопки голосования → ответ-всплывашка."""
+    ans = {"method": "answerCallbackQuery", "callback_query_id": q.get("id")}
+    try:
+        _, d, i = (q.get("data") or "").split("|")
+        i = int(i)
+    except ValueError:
+        return ans
+    uid = str((q.get("from") or {}).get("id") or "")
+    with LOCK:
+        mv = load("mvp").get(d)
+        if not mv or not uid or not 0 <= i < len(mv["c"]):
+            return dict(ans, text="Голосование не найдено")
+        if time.time() - mv.get("ts", 0) > 20 * 3600:
+            return dict(ans, text="Голосование уже закрыто")
+        mv.setdefault("v", {})[uid] = i
+        save("mvp")
+    t = mvp_tally(d)
+    lead = t["c"][0]
+    return dict(ans, text=f"Голос принят: {mv['c'][i]}.\nЛидирует {lead['name']} — {lead['n']} из {t['total']}")
+
+
+def mgr_points(pk, us, them):
+    """Очки генменеджера по счёту — те же правила, что в приложении: победитель 100, точный счёт 50, иначе разница 20."""
+    win = "S" if us > them else "O"
+    pts, why = 0, []
+    try:
+        gf, ga = int(pk.get("gf")), int(pk.get("ga"))
+    except (TypeError, ValueError):
+        return 0, []
+    if pk.get("w") == win:
+        pts += 100
+        why.append("победитель +100")
+    if gf == us and ga == them:
+        pts += 50
+        why.append("точный счёт +50")
+    elif pk.get("w") == win and gf - ga == us - them:
+        pts += 20
+        why.append("разница +20")
+    return pts, why
+
+
+def final_whistle(d, g, us, them, suffix, scorers):
+    """Матч окончен: итог всем, предварительные очки участникам, голосование за лучшего игрока."""
+    line = score_line(g, us, them) + (f" ({suffix})" if suffix else "")
+    mood = "Победа «Салавата»! 🎉" if us > them else "Поражение. Играем дальше."
+    names = load("names")
+    scored = []
+    for uid, v in load("game").items():
+        pk = v.get("picks", {}).get(d)
+        if pk:
+            pts, why = mgr_points(pk, us, them)
+            scored.append((uid, pk, pts, why))
+    scored.sort(key=lambda r: -r[2])
+    top = "\n".join(f"{'🥇🥈🥉'[i]} {names.get(u, '') or 'Болельщик'} — {p} {ru_pts(p)}" for i, (u, _, p, _) in enumerate(scored[:3]) if p > 0)
+    text = f"🏁 Матч окончен!\n{line}\n{mood}"
+    push(text, groups=False)
+    group_push(text + (f"\n\nЛучшие прогнозы на счёт:\n{top}" if top else ""), reply_markup=kb_url("🏆 Рейтинг и прогнозы"))
+    for rank, (uid, pk, pts, why) in enumerate(scored, 1):
+        mine = f"{pk.get('gf')}:{pk.get('ga')}" if g.get("home") else f"{pk.get('ga')}:{pk.get('gf')}"
+        msg = (f"🎯 Твой прогноз {mine}: генменеджер — {pts} {ru_pts(pts)}"
+               + (f" ({', '.join(why)})" if why else "") + f".\nПо счёту ты {rank}-й из {len(scored)}.\n"
+               "Очки тренера и агента придут утром, когда появится протокол матча.")
+        r = tg("sendMessage", chat_id=int(uid), text=msg, reply_markup=kb("Моя игра", "#game"))
+        if r and r.get("error_code") == 403:
+            set_sub(uid, False)
+        time.sleep(0.05)
+    cands = list(dict.fromkeys(scorers))[:6] + ["🧤 Вратарь «Салавата»"]
+    with LOCK:
+        load("mvp")[d] = {"c": cands, "v": {}, "ts": int(time.time()), "o": g["o"]}
+        save("mvp")
+    push("⭐ Кто лучший игрок «Салавата» в этом матче? Голосуй — итог покажу в приложении.",
+         silent=True, reply_markup=mvp_markup(d, cands))
+
+
 def bot_update(u):
     """Ответ на сообщение боту — сразу в ответе вебхука, без лишних запросов."""
+    if u.get("callback_query"):
+        return mvp_vote(u["callback_query"])
     cm = u.get("my_chat_member")
     if cm and cm.get("chat", {}).get("type") == "private":
         st = cm.get("new_chat_member", {}).get("status")
         set_sub(str(cm["chat"]["id"]), st == "member")
         return None
+    if cm and cm.get("chat", {}).get("type") in ("group", "supergroup"):
+        st = cm.get("new_chat_member", {}).get("status")
+        cid = str(cm["chat"]["id"])
+        on = st in ("member", "administrator")
+        with LOCK:
+            gr = load("groups")
+            was = gr.get(cid, {}).get("on")
+            gr[cid] = {"on": on, "title": (cm["chat"].get("title") or "")[:80], "ts": int(time.time())}
+            save("groups")
+        if on and not was:
+            return {"method": "sendMessage", "chat_id": cm["chat"]["id"],
+                    "text": ("🏒 Привет, болельщики! Я «Звенья Салавата».\n"
+                             "Буду вести здесь матчи «Салавата»: начало, голы, периоды, итог и лучшие прогнозы.\n"
+                             "Рейтинг прогнозистов — /table. Свой прогноз делай в приложении 👇"),
+                    "reply_markup": kb_url()}
+        return None
     m = u.get("message") or {}
     chat = m.get("chat") or {}
+    if chat.get("type") in ("group", "supergroup"):
+        text = (m.get("text") or "").strip()
+        cmd = text.split()[0].split("@")[0].lower() if text else ""
+        cid = str(chat["id"])
+        if cmd and cid not in load("groups"):
+            with LOCK:
+                load("groups")[cid] = {"on": True, "title": (chat.get("title") or "")[:80], "ts": int(time.time())}
+                save("groups")
+        if cmd in ("/table", "/top"):
+            return {"method": "sendMessage", "chat_id": chat["id"], "text": table_text(), "reply_markup": kb_url()}
+        if cmd == "/start":
+            return {"method": "sendMessage", "chat_id": chat["id"],
+                    "text": "🏒 Я веду здесь матчи «Салавата» и считаю прогнозы. Рейтинг — /table.", "reply_markup": kb_url()}
+        return None
     if chat.get("type") != "private":
         return None
     uid = str(chat["id"])
@@ -252,11 +469,19 @@ def bot_update(u):
     if cmd == "/start":
         set_sub(uid, True)
         return {"method": "sendMessage", "chat_id": chat["id"], "text": WELCOME, "parse_mode": "HTML", "reply_markup": kb("🏒 ИГРАТЬ")}
+    if cmd == "/admin" and uid == owner_id():
+        with LOCK:
+            if not load("owner").get("id"):
+                load("owner")["id"] = uid
+                save("owner")
+        return {"method": "sendMessage", "chat_id": chat["id"], "text": admin_text()}
+    if cmd in ("/table", "/top"):
+        return {"method": "sendMessage", "chat_id": chat["id"], "text": table_text(), "reply_markup": kb("Моя игра", "#game")}
     if cmd == "/goals":
-        on = not load("subs").get(uid, {}).get("goals")
+        on = not load("subs").get(uid, {}).get("goals", True)
         set_goals(uid, on)
         msg = "⚡ Матч онлайн включён: напишу о начале матча, каждого периода и овертайма и о каждом изменении счёта." if on else \
-            "Матч онлайн выключен. Включить снова — /goals."
+            "Матч онлайн выключен: во время матчей писать не буду. Включить снова — /goals."
         return {"method": "sendMessage", "chat_id": chat["id"], "text": msg}
     if cmd in ("/remind", "/stop"):
         on = cmd == "/remind" and not load("subs").get(uid, {}).get("on")
@@ -301,6 +526,8 @@ def reminders():
                         if r and r.get("error_code") == 403:
                             set_sub(uid, False)
                         time.sleep(0.05)
+                    if kind == "day":
+                        group_push(text, reply_markup=kb_url("🎯 Сделать прогноз"))
         except Exception as e:
             print("напоминания:", e, file=sys.stderr)
         try:
@@ -418,6 +645,11 @@ def announce():
             if r and r.get("error_code") == 403:
                 set_sub(uid, False)
             time.sleep(0.05)
+        best = "\n".join(f"{'🥇🥈🥉'[i]} {names.get(by.get(p, ''), '') or 'Болельщик'} — {sc[p]['tot']} {ru_pts(sc[p]['tot'])}"
+                         for i, p in enumerate(order[:3]))
+        mv = mvp_tally(d)
+        star = f"\n\n⭐ Лучший игрок по версии болельщиков: {mv['c'][0]['name']} ({mv['c'][0]['n']} из {mv['total']})" if mv and mv["total"] else ""
+        group_push(f"📊 Очки за матч подсчитаны\n{line}\n\n{best}{star}\n\n{table_text()}", reply_markup=kb_url("🏆 Рейтинг и прогнозы"))
 
 
 # ---------- лиги с друзьями
@@ -595,6 +827,21 @@ def parse_se(page):
     return {"period": period, "goals": goals, "ours": "Салават" in txt}
 
 
+def se_state(page, mid):
+    """Статус и счёт нашего матча из данных страницы: code — not-started / finished / идёт, счёт, овертаймы."""
+    for m in re.finditer(r'"id":%s,"date":"' % mid, page):
+        seg = page[m.start():m.start() + 4000]
+        nxt = re.search(r'"id":\d+,"date":"', seg[20:])
+        if nxt:
+            seg = seg[:nxt.start() + 20]
+        st = re.search(r'"status":\{"code":"([a-z\-]+)"', seg)
+        sc = re.search(r'"homeScore":(\d+),"guestScore":(\d+),"scoreType":"([^"]*)","overtime":(\d+)', seg)
+        if st:
+            return {"code": st.group(1), "home": int(sc.group(1)) if sc else None, "guest": int(sc.group(2)) if sc else None,
+                    "type": sc.group(3) if sc else "", "ot": int(sc.group(4)) if sc else 0}
+    return None
+
+
 def se_match_id(d, opp):
     """Номер матча в матч-центре «Спорт-Экспресса»: строка расписания клуба с нужной датой и соперником."""
     ids = load("seids")
@@ -624,20 +871,23 @@ def score_line(g, us, them):
     return f"Салават Юлаев {us}:{them} {g['o']}" if g.get("home") else f"{g['o']} {them}:{us} Салават Юлаев"
 
 
-def push(text, silent=False):
-    """Сообщение всем, кто включил «Матч онлайн» (/goals)."""
+def push(text, silent=False, groups=True, **extra):
+    """Сообщение всем, у кого включён «Матч онлайн» (включён по умолчанию, выключается /goals), и в чаты болельщиков."""
     for uid, sb in list(load("subs").items()):
-        if sb.get("on") and sb.get("goals"):
-            r = tg("sendMessage", chat_id=int(uid), text=text, disable_notification=silent)
+        if sb.get("on") and sb.get("goals", True):
+            r = tg("sendMessage", chat_id=int(uid), text=text, disable_notification=silent, **extra)
             if r and r.get("error_code") == 403:
                 set_sub(uid, False)
             time.sleep(0.05)
+    if groups:
+        group_push(text, silent=silent, **extra)
 
 
 def live_set(d, g, now, us, them, period, feed):
     LIVE.clear()
     LIVE.update(on=True, d=d, o=g["o"], home=bool(g.get("home")), us=us, them=them, period=period,
-                goals=feed[-12:], kickoff=int(g["kickoff"]), fin=now > g["kickoff"] + 3 * 3600, ts=int(now))
+                goals=feed[-12:], kickoff=int(g["kickoff"]),
+                fin=bool(load("sent").get(d + "live", {}).get("fin")) or now > g["kickoff"] + 3 * 3600, ts=int(now))
 
 
 def sr_assists(d, g, t, who):
@@ -674,9 +924,12 @@ def live_tick(now):
     try:
         mid = se_match_id(d, g["o"])
         if mid:
-            se = parse_se(fetch(f"{SE}/hockey/L/matchcenter/{mid}/"))
+            page = fetch(f"{SE}/hockey/L/matchcenter/{mid}/")
+            se = parse_se(page)
             if not se["ours"]:
                 se = None
+            else:
+                se["state"] = se_state(page, mid)
     except Exception as e:
         print("матч онлайн:", e, file=sys.stderr)
     if se and now >= g["kickoff"] - 60:
@@ -721,6 +974,17 @@ def live_tick(now):
                 push(f"{head}\n{score_line(g, us, them)}\n🏒 {who}{' (' + ', '.join(ast) + ')' if ast else ''}, {t // 60}:{t % 60:02d}",
                      silent=mine is False)
         us, them = (rows[-1][4], rows[-1][5]) if rows else (0, 0)
+        stt = se.get("state") or {}
+        if stt.get("code") == "finished" and not st.get("fin") and st["src"] == "se":
+            st["fin"] = True
+            if stt.get("home") is not None:
+                us, them = (stt["home"], stt["guest"]) if home else (stt["guest"], stt["home"])
+            with LOCK:
+                sent[d + "live"] = st
+                save("sent")
+            if not late and us != them:
+                suffix = "Б" if se["period"] == 5 or "bul" in stt.get("type", "").lower() else "ОТ" if se["period"] == 4 or stt.get("ot") else ""
+                final_whistle(d, g, us, them, suffix, [r[2] for r in rows if r[3]])
         live_set(d, g, now, us, them, se["period"],
                  [{"t": r[1], "who": r[2], "mine": r[3], "us": r[4], "them": r[5]} for r in rows])
     elif not se and st["src"] != "se" and now > g["kickoff"] + 600:
@@ -797,13 +1061,16 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, {"ok": True, "games": len(calendar())})
         if p[:3] == ["api", "public", "seal"]:
             return self.send(200, public_seal())
+        if p[:3] == ["api", "public", "mvp"]:
+            mv = load("mvp")
+            return self.send(200, (mvp_tally(max(mv)) if mv else None) or {})
         if p[:3] == ["api", "public", "live"]:
             return self.send(200, dict(LIVE))
         u = self.user()
         if not u:
             return self.send(401, {"error": "нет подписи Телеграма"})
         if p[:2] == ["api", "me"]:
-            return self.send(200, {"id": u["id"], "name": u["name"], "sub": bool(load("subs").get(u["id"], {}).get("on")), "goals": bool(load("subs").get(u["id"], {}).get("goals"))})
+            return self.send(200, {"id": u["id"], "name": u["name"], "sub": bool(load("subs").get(u["id"], {}).get("on")), "goals": bool(load("subs").get(u["id"], {}).get("goals", True))})
         if p[:2] == ["api", "leagues"]:
             return self.send(200, {"leagues": my_leagues(u["id"]), "bot": bot_name()})
         if len(p) == 3 and p[1] == "c":
@@ -977,7 +1244,7 @@ class H(BaseHTTPRequestHandler):
             if "on" in b:
                 set_sub(u["id"], bool(b.get("on")))
             sb = load("subs").get(u["id"], {})
-            return self.send(200, {"ok": True, "sub": bool(sb.get("on")), "goals": bool(sb.get("goals"))})
+            return self.send(200, {"ok": True, "sub": bool(sb.get("on")), "goals": bool(sb.get("goals", True))})
         self.send(404, {"error": "нет такого адреса"})
 
 
