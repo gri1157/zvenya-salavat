@@ -165,7 +165,7 @@ WELCOME = ("<b>🏒 Звенья Салавата</b>\n\n"
            "🎯 Угадывай счёт матча\n"
            "🏆 Получай очки и соревнуйся с другими болельщиками\n\n"
            "🔔 В день матча напомню о прогнозе — /remind\n"
-           "⚡ Голы «Салавата» онлайн — /goals")
+           "⚡ Матч онлайн: начало периодов и каждый гол — /goals")
 DESCRIPTION = ("🏒 Звенья Салавата — игра для болельщиков «Салавата Юлаева»\n\n"
                "▶️ Заходи в игру\n"
                "🧩 Выставляй свой состав на матч\n"
@@ -221,7 +221,7 @@ def bot_setup():
     print("webhook:", (r or {}).get("ok"), (r or {}).get("description", ""), flush=True)
     tg("setMyCommands", commands=[{"command": "start", "description": "Открыть приложение"},
                                   {"command": "remind", "description": "Напоминания о прогнозах: включить или выключить"},
-                                  {"command": "goals", "description": "Голы «Салавата» онлайн: включить или выключить"}])
+                                  {"command": "goals", "description": "Матч онлайн: периоды и голы — включить или выключить"}])
     tg("setChatMenuButton", menu_button={"type": "web_app", "text": "Играть", "web_app": {"url": APP + "/"}})
     tg("setMyShortDescription", short_description=SHORT_DESCRIPTION)
     tg("setMyDescription", description=DESCRIPTION)
@@ -255,8 +255,8 @@ def bot_update(u):
     if cmd == "/goals":
         on = not load("subs").get(uid, {}).get("goals")
         set_goals(uid, on)
-        msg = "⚡ Голы онлайн включены: во время матчей «Салавата» буду писать о каждом голе." if on else \
-            "Голы онлайн выключены. Включить снова — /goals."
+        msg = "⚡ Матч онлайн включён: напишу о начале матча, каждого периода и овертайма и о каждом изменении счёта." if on else \
+            "Матч онлайн выключен. Включить снова — /goals."
         return {"method": "sendMessage", "chat_id": chat["id"], "text": msg}
     if cmd in ("/remind", "/stop"):
         on = cmd == "/remind" and not load("subs").get(uid, {}).get("on")
@@ -525,46 +525,225 @@ def sr_match_id(d, opp):
     return ids.get(d)
 
 
-def live_goals():
-    """Во время матча раз в минуту читает трансляцию и рассылает новые голы."""
+def sr_goals_tick(d, g, now):
+    """Запасной путь: голы по трансляции Sports.ru (если Спорт-Экспресс недоступен)."""
+    mid = sr_match_id(d, g["o"])
+    if not mid:
+        return
+    goals = parse_goals(fetch(f"{SR}/hockey/match/{mid}/"))
+    ours = our_surnames()
+    sent = load("sent")
+    key = d + "goals"
+    done = sent.get(key)
+    if done is None:  # первый раз видим матч: если он давно идёт, старые голы не шлём
+        done = [f"{t}|{w}" for t, w, _ in goals] if now - g["kickoff"] > 900 else []
+    us = them = 0
+    feed = []
+    for t, who, ast in goals:
+        mine = who.split()[-1] in ours
+        us, them = (us + 1, them) if mine else (us, them + 1)
+        feed.append({"t": t, "who": who, "mine": mine, "us": us, "them": them})
+        k = f"{t}|{who}"
+        if k in done:
+            continue
+        done.append(k)
+        head = "🚨 ГОЛ «САЛАВАТА»!" if mine else f"Гол {g['o']}"
+        push(f"{head}\n{score_line(g, us, them)}\n🏒 {who}{' (' + ', '.join(ast) + ')' if ast else ''}, {t // 60}:{t % 60:02d}", silent=not mine)
+    with LOCK:
+        sent[key] = done
+        save("sent")
+    live_set(d, g, now, us, them, LIVE.get("period", 0) if LIVE.get("d") == d else 0, feed)
+
+
+# ---------- матч онлайн: счёт и периоды со страницы матча «Спорт-Экспресса» (обычный HTML)
+SE = "https://www.sport-express.net"
+SE_SCHEDULE = SE + "/tag/salavat-yulaev-11/schedule/"
+SE_WORD = r"[А-ЯЁA-Z][А-Яа-яЁёA-Za-z'\.\-]*"
+SE_WHO = SE_WORD + r"(?: " + SE_WORD + r"){0,3}"
+SE_KIND = r"(?i:гол!?|штраф)"
+# время, игрок, «ГОЛ!» или «штраф»; после гола — счёт (но не время следующего события)
+SE_EV = re.compile(r"(?<![\d:])(\d{1,3}):(\d{2})\s+(" + SE_WHO + r")\s+(" + SE_KIND + r")"
+                   r"(?:\s+(\d{1,2})\s*:\s*(\d{1,2})(?![\d:])(?!\s+" + SE_WHO + r"\s+" + SE_KIND + r"))?")
+SE_PER = re.compile(r"(?<![\d:])([1-3])(?:-й)?\s+период\s+\d{1,2}\s*:\s*\d{1,2}(?![\d:])", re.I)
+SE_OT = re.compile(r"(?<![а-яё])(?:овертайм|ОТ)\s+\d{1,2}\s*:\s*\d{1,2}(?![\d:])", re.I)
+SE_SO = re.compile(r"(?<![а-яё])(?:буллиты|серия буллитов|послематчевые буллиты)\s+\d{1,2}\s*:\s*\d{1,2}(?![\d:])", re.I)
+PERIOD_NAME = {1: "1-й период", 2: "2-й период", 3: "3-й период", 4: "Овертайм", 5: "Буллиты"}
+LIVE = {"on": False}
+_se_try = {}
+
+
+def parse_se(page):
+    """Страница матча «Спорт-Экспресса» → период (0 — не начался, 1–3, 4 — овертайм, 5 — буллиты)
+    и голы по времени: [(секунда матча, автор, счёт хозяев, счёт гостей)]."""
+    txt = " ".join(text_lines(page))
+    period = 0
+    for m in SE_PER.finditer(txt):
+        period = max(period, int(m.group(1)))
+    goals = []
+    for m in SE_EV.finditer(txt):
+        t = int(m.group(1)) * 60 + int(m.group(2))
+        period = max(period, 1 if t <= 1200 else 2 if t <= 2400 else 3 if t <= 3600 else 4)
+        if m.group(4).lower().startswith("гол") and m.group(5) is not None:
+            row = (t, m.group(3), int(m.group(5)), int(m.group(6)))
+            if row not in goals:
+                goals.append(row)
+    goals.sort(key=lambda r: (r[0], r[2] + r[3]))
+    if SE_OT.search(txt):
+        period = max(period, 4)
+    if SE_SO.search(txt):
+        period = 5
+    return {"period": period, "goals": goals, "ours": "Салават" in txt}
+
+
+def se_match_id(d, opp):
+    """Номер матча в матч-центре «Спорт-Экспресса»: строка расписания клуба с нужной датой и соперником."""
+    ids = load("seids")
+    if d in ids:
+        return ids[d]
+    if time.time() - _se_try.get(d, 0) < 300:  # расписание не дёргаем чаще раза в 5 минут
+        return None
+    _se_try[d] = time.time()
+    page = fetch(SE_SCHEDULE)
+    stamp = f"{d[8:10]}.{d[5:7]}.{d[:4]}"
+    for part in page.split(stamp)[1:]:
+        nxt = re.search(r"\d{2}\.\d{2}\.\d{4}", part)
+        row = part[:nxt.start()] if nxt else part[:6000]
+        m = re.search(r"matchcenter/(\d+)", row)
+        if not m or opp.split()[0] not in " ".join(text_lines(row)):
+            continue
+        pd, sal, _ = page_match(fetch(f"{SE}/hockey/L/matchcenter/{m.group(1)}/"))
+        if pd == d and sal:
+            with LOCK:
+                ids[d] = m.group(1)
+                save("seids")
+            return m.group(1)
+    return None
+
+
+def score_line(g, us, them):
+    return f"Салават Юлаев {us}:{them} {g['o']}" if g.get("home") else f"{g['o']} {them}:{us} Салават Юлаев"
+
+
+def push(text, silent=False):
+    """Сообщение всем, кто включил «Матч онлайн» (/goals)."""
+    for uid, sb in list(load("subs").items()):
+        if sb.get("on") and sb.get("goals"):
+            r = tg("sendMessage", chat_id=int(uid), text=text, disable_notification=silent)
+            if r and r.get("error_code") == 403:
+                set_sub(uid, False)
+            time.sleep(0.05)
+
+
+def live_set(d, g, now, us, them, period, feed):
+    LIVE.clear()
+    LIVE.update(on=True, d=d, o=g["o"], home=bool(g.get("home")), us=us, them=them, period=period,
+                goals=feed[-12:], kickoff=int(g["kickoff"]), fin=now > g["kickoff"] + 3 * 3600, ts=int(now))
+
+
+def sr_assists(d, g, t, who):
+    """Передачи к голу из трансляции Sports.ru, если она уже успела написать о нём."""
+    try:
+        mid = sr_match_id(d, g["o"])
+        if mid:
+            for st, sw, ast in parse_goals(fetch(f"{SR}/hockey/match/{mid}/")):
+                if abs(st - t) <= 90 and sw.split()[-1] == who.split()[-1]:
+                    return ast
+    except Exception as e:
+        print("передачи:", e, file=sys.stderr)
+    return []
+
+
+def live_tick(now):
+    d = datetime.fromtimestamp(now, UFA).strftime("%Y-%m-%d")
+    g = calendar().get(d)
+    if not (g and g["kickoff"] - 300 <= now <= g["kickoff"] + 4 * 3600):
+        LIVE.clear()
+        LIVE["on"] = False
+        return False
+    sent = load("sent")
+    st = sent.get(d + "live")
+    late = st is None and now - g["kickoff"] > 900  # сервер запустили посреди матча: старое не рассылаем
+    if st is None:
+        st = {"kick": False, "p": 0, "goals": [], "src": "", "down": 0}
+    teams = f"Салават Юлаев — {g['o']}" if g.get("home") else f"{g['o']} — Салават Юлаев"
+    if not st["kick"] and now >= g["kickoff"]:
+        st["kick"] = True
+        if not late:
+            push(f"🏒 Матч начинается!\n{teams}")
+    se = None
+    try:
+        mid = se_match_id(d, g["o"])
+        if mid:
+            se = parse_se(fetch(f"{SE}/hockey/L/matchcenter/{mid}/"))
+            if not se["ours"]:
+                se = None
+    except Exception as e:
+        print("матч онлайн:", e, file=sys.stderr)
+    if se and now >= g["kickoff"] - 60:
+        home = bool(g.get("home"))
+        rows = []  # (ключ, секунда, автор, наш ли гол, наши, их)
+        ph = pa = 0
+        for t, who, h, a in se["goals"]:
+            mine = (h > ph) == home if (h > ph) != (a > pa) else None
+            ph, pa = h, a
+            us, them = (h, a) if home else (a, h)
+            rows.append((f"{h}:{a}", t, who, mine, us, them))
+        if st["src"] != "sr":
+            st["src"] = "se"
+        if se["period"] > st["p"]:
+            p = se["period"]
+            st["p"] = p
+            if not late:
+                before = [r for r in rows if r[1] <= (p - 1) * 1200] if p < 5 else rows
+                us, them = (before[-1][4], before[-1][5]) if before else (0, 0)
+                head = {4: "⏱ Начался овертайм!", 5: "🎯 Серия буллитов!"}.get(p, f"▶️ Начался {p}-й период")
+                push(f"{head}\n{score_line(g, us, them)}")
+        if st["src"] == "se":
+            keys = [r[0] for r in rows]
+            gone = [k for k in st["goals"] if k not in keys]
+            if gone and se["period"]:
+                st["down"] = st.get("down", 0) + 1
+                if st["down"] >= 2:  # гол пропал со страницы два опроса подряд — его отменили
+                    st["goals"] = [k for k in st["goals"] if k in keys]
+                    st["down"] = 0
+                    us, them = (rows[-1][4], rows[-1][5]) if rows else (0, 0)
+                    push(f"❌ Гол отменён\n{score_line(g, us, them)}")
+            else:
+                st["down"] = 0
+            for k, t, who, mine, us, them in rows:
+                if k in st["goals"]:
+                    continue
+                st["goals"].append(k)
+                if late:
+                    continue
+                ast = sr_assists(d, g, t, who)
+                head = "🚨 ГОЛ «САЛАВАТА»!" if mine else f"Гол {g['o']}" if mine is False else "Гол!"
+                push(f"{head}\n{score_line(g, us, them)}\n🏒 {who}{' (' + ', '.join(ast) + ')' if ast else ''}, {t // 60}:{t % 60:02d}",
+                     silent=mine is False)
+        us, them = (rows[-1][4], rows[-1][5]) if rows else (0, 0)
+        live_set(d, g, now, us, them, se["period"],
+                 [{"t": r[1], "who": r[2], "mine": r[3], "us": r[4], "them": r[5]} for r in rows])
+    elif not se and st["src"] != "se" and now > g["kickoff"] + 600:
+        st["src"] = "sr"  # «Спорт-Экспресс» не отвечает с начала матча — голы берём со Sports.ru
+    with LOCK:
+        sent[d + "live"] = st
+        save("sent")
+    if st["src"] == "sr":
+        sr_goals_tick(d, g, now)
+    elif not se and not LIVE.get("on") and now >= g["kickoff"]:
+        live_set(d, g, now, 0, 0, 0, [])
+    return True
+
+
+def live_loop():
+    """Во время матча раз в полминуты читает страницу матча и рассылает начало периодов и голы."""
     while True:
+        on = False
         try:
-            now = time.time()
-            d = datetime.fromtimestamp(now, UFA).strftime("%Y-%m-%d")
-            g = calendar().get(d)
-            if g and TOKEN and g["kickoff"] - 300 <= now <= g["kickoff"] + 4 * 3600:
-                mid = sr_match_id(d, g["o"])
-                if mid:
-                    goals = parse_goals(fetch(f"{SR}/hockey/match/{mid}/"))
-                    ours = our_surnames()
-                    sent = load("sent")
-                    key = d + "goals"
-                    done = sent.get(key)
-                    if done is None:  # первый раз видим матч: если он давно идёт, старые голы не шлём
-                        done = [f"{t}|{w}" for t, w, _ in goals] if now - g["kickoff"] > 900 else []
-                    us = them = 0
-                    for t, who, ast in goals:
-                        mine = who.split()[-1] in ours
-                        us, them = (us + 1, them) if mine else (us, them + 1)
-                        k = f"{t}|{who}"
-                        if k in done:
-                            continue
-                        done.append(k)
-                        score = f"Салават Юлаев {us}:{them} {g['o']}" if g.get("home") else f"{g['o']} {them}:{us} Салават Юлаев"
-                        head = "🚨 ГОЛ «САЛАВАТА»!" if mine else f"Гол {g['o']}"
-                        text = f"{head}\n{score}\n🏒 {who}{' (' + ', '.join(ast) + ')' if ast else ''}, {t // 60}:{t % 60:02d}"
-                        for uid, sb in list(load("subs").items()):
-                            if sb.get("on") and sb.get("goals"):
-                                r = tg("sendMessage", chat_id=int(uid), text=text, disable_notification=not mine)
-                                if r and r.get("error_code") == 403:
-                                    set_sub(uid, False)
-                                time.sleep(0.05)
-                    with LOCK:
-                        sent[key] = done
-                        save("sent")
+            on = bool(TOKEN) and live_tick(time.time())
         except Exception as e:
-            print("голы онлайн:", e, file=sys.stderr)
-        time.sleep(60)
+            print("матч онлайн:", e, file=sys.stderr)
+        time.sleep(30 if on else 60)
 
 
 def set_goals(uid, on):
@@ -618,6 +797,8 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, {"ok": True, "games": len(calendar())})
         if p[:3] == ["api", "public", "seal"]:
             return self.send(200, public_seal())
+        if p[:3] == ["api", "public", "live"]:
+            return self.send(200, dict(LIVE))
         u = self.user()
         if not u:
             return self.send(401, {"error": "нет подписи Телеграма"})
@@ -813,6 +994,15 @@ def watch_self():
             pass
 
 
+if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--probe-se":
+    # проверка разбора «Спорт-Экспресса»: python3 api.py --probe-se 129367
+    pg = fetch(f"{SE}/hockey/L/matchcenter/{sys.argv[2]}/")
+    r = parse_se(pg)
+    print("страница:", page_match(pg)[:2], "| период:", PERIOD_NAME.get(r["period"], "не начался"))
+    for t, w, h, a in r["goals"]:
+        print(f"{t // 60}:{t % 60:02d}", w, f"{h}:{a}")
+    sys.exit(0)
+
 if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--probe":
     # проверка разбора трансляции: python3 api.py --probe 1874359
     pg = fetch(f"{SR}/hockey/match/{sys.argv[2]}/")
@@ -827,6 +1017,6 @@ if __name__ == "__main__":
     threading.Thread(target=watch_self, daemon=True).start()
     threading.Thread(target=bot_setup, daemon=True).start()
     threading.Thread(target=reminders, daemon=True).start()
-    threading.Thread(target=live_goals, daemon=True).start()
+    threading.Thread(target=live_loop, daemon=True).start()
     print(f"api на 127.0.0.1:{PORT}, матчей в календаре: {len(calendar())}", flush=True)
     ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()
