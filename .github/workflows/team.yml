@@ -90,7 +90,7 @@ jobs:
           prompt: "Прочитай .github/agents/critic.md и выполни задание полностью."
           claude_args: |
             --model ${{ env.MODEL }}
-            --max-turns 50
+            --max-turns 90
             --allowedTools "Bash,Read,Write,Glob,Grep"
       - name: Завести подтверждённые ошибки
         if: always()

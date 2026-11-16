@@ -470,7 +470,7 @@ html:root[data-ui="lite"][data-zt="dark"]{--page:radial-gradient(1100px 700px at
 @media (max-width:700px){
   [data-ui="pro"] nav{position:fixed;top:auto;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:15;margin:0;display:flex;flex-wrap:nowrap;gap:2px;padding:6px;border-radius:30px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
   [data-ui="pro"] nav::-webkit-scrollbar{display:none}
-  [data-ui="pro"] nav a{flex:0 0 66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:7px 2px 6px;font-size:10.5px;font-weight:600;border-radius:22px;min-width:0;line-height:1.1}
+  [data-ui="pro"] nav a{flex:0 0 80px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:7px 2px 6px;font-size:10.5px;font-weight:600;border-radius:22px;min-width:0;line-height:1.1}
   [data-ui="pro"] nav .ni{display:block;width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   [data-ui="pro"] nav .nl{display:none}
   [data-ui="pro"] nav .ns{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -1391,22 +1391,26 @@ function salavatStr(lu,gk){
 function salavatNow(){const lu=STATE.LU[board];return salavatStr(lu,lu.g[0])}
 const shotSeg=()=>[["g","Голам"],["gs","Голам и броскам"],["s","Только броскам"]].map(([k,l])=>`<button data-shm="${k}" aria-pressed="${shotMode===k}">${l}</button>`).join("");
 const HOME=1.06;
-function poisson(l){const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math.random()}while(p>L);return k-1}
-function simulate(lS,lO,n){const r={W:0,OTW:0,SOW:0,SOL:0,OTL:0,L:0},sc={};let gS=0,gO=0;
+/* случайность расчётов: прогнозы считаются с фиксированным зерном — одни данные дают одни и те же цифры при каждой загрузке (#26); виртуальный матч остаётся случайным */
+let RND=Math.random;
+function seeded(fn,seed=20262027){let a=seed>>>0;const prev=RND;RND=()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};try{return fn()}finally{RND=prev}}
+function poisson(l){const L=Math.exp(-l);let k=0,p=1;do{k++;p*=RND()}while(p>L);return k-1}
+function simulate(lS,lO,n){return seeded(()=>simulate0(lS,lO,n))}
+function simulate0(lS,lO,n){const r={W:0,OTW:0,SOW:0,SOL:0,OTL:0,L:0},sc={};let gS=0,gO=0;
   for(let i=0;i<n;i++){let a=poisson(lS),b=poisson(lO);gS+=a;gO+=b;let k;
-    if(a>b)k="W";else if(b>a)k="L";else{if(Math.random()<.62){if(Math.random()<lS/(lS+lO)){k="OTW";a++}else{k="OTL";b++}}else{k=Math.random()<.5?"SOW":"SOL";k==="SOW"?a++:b++}}
+    if(a>b)k="W";else if(b>a)k="L";else{if(RND()<.62){if(RND()<lS/(lS+lO)){k="OTW";a++}else{k="OTL";b++}}else{k=RND()<.5?"SOW":"SOL";k==="SOW"?a++:b++}}
     r[k]++;const key=`${a}:${b}${k.startsWith("OT")?" ОТ":k.startsWith("SO")?" Б":""}`;sc[key]=(sc[key]||0)+1}
   Object.keys(r).forEach(k=>r[k]/=n);
   return{r,top:Object.entries(sc).sort((x,y)=>y[1]-x[1]).slice(0,5).map(([k,v])=>[k,v/n]),xS:gS/n,xO:gO/n,pts:2*(r.W+r.OTW+r.SOW)+(r.SOL+r.OTL)}}
-function pickW(arr,wf){const tot=arr.reduce((s,x)=>s+wf(x),0);let r=Math.random()*tot;for(const x of arr){r-=wf(x);if(r<=0)return x}return arr[arr.length-1]}
+function pickW(arr,wf){const tot=arr.reduce((s,x)=>s+wf(x),0);let r=RND()*tot;for(const x of arr){r-=wf(x);if(r<=0)return x}return arr[arr.length-1]}
 function virtualMatch(lS,lO,oppName){
   const lu=STATE.LU[board];const sk=[...lu.lines.flatMap(l=>[l.lw,l.c,l.rw]),...lu.pairs.flatMap(d=>[d.ld,d.rd])].filter(Boolean);
   const R=RIVALS.find(r=>r.name===oppName);
-  const ev=[];const mk=(us,t)=>{if(us){const s=pickW(sk,p=>p.gpg+.02);const rest=sk.filter(p=>p!==s);const a1=Math.random()<.9?pickW(rest,p=>p.apg+.02):null;const a2=a1&&Math.random()<.7?pickW(rest.filter(p=>p!==a1),p=>p.apg+.02):null;return{t,us,txt:`${SUR(s.name)}${a1?` (${SUR(a1.name)}${a2?", "+SUR(a2.name):""})`:""}`,pp:Math.random()<.2}}
-    const o=R?pickW(R.top,t=>t[3]+.5):null;return{t,us,txt:o?SUR(o[0]):"игрок соперника",pp:Math.random()<.2}};
-  const a=poisson(lS),b=poisson(lO);for(let i=0;i<a;i++)ev.push(mk(1,Math.random()*60));for(let i=0;i<b;i++)ev.push(mk(0,Math.random()*60));
+  const ev=[];const mk=(us,t)=>{if(us){const s=pickW(sk,p=>p.gpg+.02);const rest=sk.filter(p=>p!==s);const a1=RND()<.9?pickW(rest,p=>p.apg+.02):null;const a2=a1&&RND()<.7?pickW(rest.filter(p=>p!==a1),p=>p.apg+.02):null;return{t,us,txt:`${SUR(s.name)}${a1?` (${SUR(a1.name)}${a2?", "+SUR(a2.name):""})`:""}`,pp:RND()<.2}}
+    const o=R?pickW(R.top,t=>t[3]+.5):null;return{t,us,txt:o?SUR(o[0]):"игрок соперника",pp:RND()<.2}};
+  const a=poisson(lS),b=poisson(lO);for(let i=0;i<a;i++)ev.push(mk(1,RND()*60));for(let i=0;i<b;i++)ev.push(mk(0,RND()*60));
   ev.sort((x,y)=>x.t-y.t);let res="",sa=a,sb=b;
-  if(a===b){if(Math.random()<.62){const us=Math.random()<lS/(lS+lO);ev.push({...mk(us?1:0,60+Math.random()*5),pp:false});us?sa++:sb++;res="ОТ"}else{const us=Math.random()<.5;res="Б";us?sa++:sb++;ev.push({t:65.1,us:us?1:0,txt:"победный буллит",so:1})}}
+  if(a===b){if(RND()<.62){const us=RND()<lS/(lS+lO);ev.push({...mk(us?1:0,60+RND()*5),pp:false});us?sa++:sb++;res="ОТ"}else{const us=RND()<.5;res="Б";us?sa++:sb++;ev.push({t:65.1,us:us?1:0,txt:"победный буллит",so:1})}}
   return{ev,sa,sb,res,gk:lu.g[0]}
 }
 const fmtT=t=>{const m=Math.floor(t),s=Math.floor((t-m)*60);return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`};
@@ -2184,16 +2188,17 @@ function salSchedule(){if(SCHED)return SCHED;
   const lastS=rows.length?rows[rows.length-1].Sm:salavatStr(STATE.LU.model,STATE.LU.model.g[0]);
   return SCHED={rows,unk,pU:matchProb(LEAGUE_G*lastS.att,LEAGUE_G*lastS.def),lastS}}
 let SEASON=null;
-function seasonSim(N=4000){if(SEASON)return SEASON;const SC=salSchedule();
+function seasonSim(N=4000){return seeded(()=>seasonSim0(N))}
+function seasonSim0(N=4000){if(SEASON)return SEASON;const SC=salSchedule();
   const T=TEAMS.map(t=>({name:t[0],conf:t[1],gp:t[2],pts:t[7]}));const ix={};T.forEach((t,i)=>ix[t.name]=i);const us=ix[US];
   const PU=[2,2,2,1,1,0],PO=[0,1,1,2,2,2];
   const cum=p=>{let s=0;return[p.W,p.OTW,p.SOW,p.SOL,p.OTL].map(v=>s+=v)};
-  const draw=c=>{const r=Math.random();return r<c[0]?0:r<c[1]?1:r<c[2]?2:r<c[3]?3:r<c[4]?4:5};
+  const draw=c=>{const r=RND();return r<c[0]?0:r<c[1]?1:r<c[2]?2:r<c[3]?3:r<c[4]?4:5};
   const sg=SC.rows.filter(g=>ix[g.o]!=null).map(g=>({o:ix[g.o],c:cum(g.p)})),cU=cum(SC.pU);
   T.forEach((t,i)=>{t.vs=sg.filter(g=>g.o===i).length;if(i===us)return;t.n=Math.max(0,SEASON_N-t.gp-t.vs);const o=tIdx(t.name),O=o?oppStr(o):{att:1,def:1};t.p=matchProb(LEAGUE_G*O.att,LEAGUE_G*O.def);t.c=cum(t.p)});
   const R=T.map(t=>({t,pl:[],po:0,top4:0,pts:0})),cut8=[],myConf=T[us].conf,fin=new Float64Array(T.length);
   for(let s=0;s<N;s++){
-    for(let i=0;i<T.length;i++)fin[i]=T[i].pts+Math.random()*.01;
+    for(let i=0;i<T.length;i++)fin[i]=T[i].pts+RND()*.01;
     for(const g of sg){const k=draw(g.c);fin[us]+=PU[k];fin[g.o]+=PO[k]}
     for(let j=0;j<SC.unk;j++)fin[us]+=PU[draw(cU)];
     for(let i=0;i<T.length;i++){if(i===us)continue;const t=T[i];for(let j=0;j<t.n;j++)fin[i]+=PU[draw(t.c)]}
