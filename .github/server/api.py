@@ -504,7 +504,7 @@ def sr_match_id(d, opp):
     ids = load("srids")
     if d in ids:
         return ids[d]
-    cal = fetch(SR + "/hockey/club/salavat-yulaev/calendar/")
+    cal = fetch(SR + "/hockey/club/salavat/calendar/")
     seen = load("srseen")
     for mid in dict.fromkeys(re.findall(r"/hockey/match/(\d+)/", cal)):
         if mid in seen:

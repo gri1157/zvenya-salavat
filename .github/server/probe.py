@@ -20,9 +20,17 @@ try:
         for i, x in enumerate(L):
             if re.search(r"оконч|заверш|буллит|овертайм|период|Счет|Счёт|итог|Лучш", x, re.I) and len(x) < 160:
                 print(f"  [{i}] {x}")
-        print("SE первые строки:")
-        for x in L[:120]:
-            print("   |", x[:140])
+        for i, x in enumerate(L):
+            if x == "Матч окончен":
+                print("--- контекст", i)
+                for y in L[max(0, i - 14):i + 6]:
+                    print("   |", y[:120])
+        for m in re.finditer("Матч окончен", page):
+            print("--- html", m.start())
+            print(re.sub(r"\s+", " ", page[max(0, m.start() - 700):m.start() + 120]))
+        print("--- строки 130-160")
+        for y in L[130:160]:
+            print("   |", y[:120])
 except Exception as e:
     print("SE ошибка:", repr(e))
 try:
