@@ -48,6 +48,10 @@ for d, (gf, ga, x, home) in sorted(site.items()):
 for d in mine:
     if d not in site: bad.append('в приложении есть, на сайте нет: ' + d)
 print('Матчей на сайте: %d, в приложении: %d' % (len(site), len(mine)))
+if '--json' in sys.argv:
+    out = sys.argv[sys.argv.index('--json') + 1]
+    missing = sorted(d for d in site if d not in mine)
+    json.dump({'нет_в_приложении': missing, 'расхождения': [b for b in bad if b.startswith('не совпадает')]}, open(out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 if bad:
     print('РАСХОЖДЕНИЯ:'); [print(' !', b) for b in bad]; sys.exit(1)
 print('Все результаты совпадают.')
