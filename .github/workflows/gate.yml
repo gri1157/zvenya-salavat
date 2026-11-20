@@ -1,0 +1,31 @@
+name: Привратник данных
+
+# Без ИИ: каждые 3 часа смотрит на Allhockey, нет ли сыгранного матча Салавата, которого нет в приложении.
+# Результат кладёт в .github/data/need.json — по нему сборщик понимает, нужен ли полный сбор.
+on:
+  schedule:
+    - cron: '10 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: { group: gate, cancel-in-progress: false }
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Сверка
+        run: python3 .github/data/check_games.py index.html --json .github/data/need.json || true
+      - name: Сохранить, если изменилось
+        run: |
+          git config user.name "Claude"
+          git config user.email "noreply@anthropic.com"
+          git add .github/data/need.json
+          if git diff --cached --quiet; then echo "без изменений"; exit 0; fi
+          git commit -m "Привратник: нет в приложении — $(python3 -c "import json;print(json.load(open('.github/data/need.json'))['нет_в_приложении'])")"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push -q origin main && exit 0; sleep 5; done
+          exit 1
