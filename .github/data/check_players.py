@@ -91,7 +91,9 @@ for b in bad:
     mine = b.split('приложение ')[1].split(',')[0]
     t = third(b.split(':')[0], lab)
     # спорно только если Allhockey не подтверждает приложение (или не знает игрока)
-    if t.replace('+', '') != mine:
+    if t == '?':
+        print('  (нужна ручная проверка, второй источник не дал значения:', b, ')')
+    elif t.replace('+', '') != mine:
         out.append(b + ' | Allhockey: ' + t)
     else:
         print('  (Спорт-Экспресс отстаёт, Allhockey подтверждает приложение:', b.split(' |')[0], ')')

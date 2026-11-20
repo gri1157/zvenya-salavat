@@ -1,0 +1,19 @@
+name: Сверка игроков
+
+# Без ИИ: раз в сутки сверяет цифры игроков Салавата с двумя источниками.
+# Красный запуск = цифра расходится с обоими источниками (Спорт-Экспресс отстаёт — это не считается).
+on:
+  schedule:
+    - cron: '50 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  players:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .github/data/check_players.py index.html
