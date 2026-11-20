@@ -1,0 +1,16 @@
+name: Разведчик источников
+
+# Без ИИ и без записи: только читает открытые сайты и печатает в журнал, что удалось достать.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .github/data/scout.py index.html
