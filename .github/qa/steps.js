@@ -129,3 +129,54 @@ if (step === 'council-issue') {
   const c = fs.existsSync('council.md') ? fs.readFileSync('council.md', 'utf8') : '';
   if (c) G.createIssue(c.split('\n')[0].replace(/^#\s*/, ''), c, ['council']);
 }
+
+if (step === 'tester-script') {
+  // проверка без ИИ: check.js -> bugs.json и report.md (Lite и Pro проверяются вместе)
+  fs.mkdirSync('qa-work/shots', { recursive: true });
+  let out = '';
+  try { out = execSync('node .github/qa/check.js index.html qa-work/shots', { stdio: ['ignore', 'pipe', 'inherit'] }).toString(); }
+  catch (e) { out = (e.stdout || '').toString(); }
+  let r;
+  try { r = JSON.parse(out); } catch (e) { r = { errors: ['автопроверка не запустилась'], failedChecks: [], overflow: [] }; }
+  const bugs = [
+    ...(r.errors || []).map(e => ({ title: `Ошибка в приложении: ${e}`, severity: 'критично', body: 'Страница выдала ошибку JavaScript.' })),
+    ...(r.failedChecks || []).map(c => ({ title: `Не проходит встроенная проверка: ${c}`, severity: 'важно', body: 'Встроенная самопроверка приложения вернула ошибку.' })),
+    ...(r.overflow || []).map(o => ({ title: `Горизонтальная прокрутка на телефоне: ${o}`, severity: 'мелочь', body: 'Ширина страницы больше экрана 390 px.' })),
+  ];
+  fs.writeFileSync('bugs.json', JSON.stringify(bugs, null, 1));
+  fs.writeFileSync('report.md', `# Проверка без ИИ: найдено ${bugs.length}\n\nПроверено: ошибки страницы, встроенные проверки и прокрутка на телефоне во всех вкладках Lite и Pro.\n\n` + (bugs.map(b => `- ${b.title} (${b.severity})`).join('\n') || 'Проблем не найдено.') + '\n');
+  console.log('найдено:', bugs.length);
+}
+
+if (step === 'critic-script') {
+  // подтверждение без ИИ: уже заведённые ошибки -> повтор, новые -> задача bug
+  const bugs = G.readJSON('bugs.json', []);
+  const open = G.readJSON('qa-open-bugs.json', []);
+  const norm = s => String(s).toLowerCase().replace(/[^a-zа-яё0-9]+/g, ' ').trim();
+  const confirmed = bugs.map(b => {
+    const same = open.find(o => norm(o.title) === norm(b.title));
+    return same ? { existing: same.number, title: b.title, severity: b.severity, body: b.body } : { title: b.title, severity: b.severity, body: b.body };
+  });
+  fs.writeFileSync('critic.json', JSON.stringify({ confirmed, rejected: [] }, null, 1));
+  fs.writeFileSync('report.md', `# Критик без ИИ: подтверждено ${confirmed.length}, новых ${confirmed.filter(c => !c.existing).length}\n\n` + (confirmed.map(c => `- ${c.title}${c.existing ? ` (уже есть #${c.existing})` : ''}`).join('\n') || 'Проблем нет.') + '\n');
+}
+
+if (step === 'council-script') {
+  // недельный отчёт без ИИ: счётчики по задачам GitHub за 7 дней
+  const since = new Date(Date.now() - 7 * 864e5).toISOString();
+  const found = G.issues(`labels=bug&state=all&since=${since}`);
+  const fixed = found.filter(i => i.state === 'closed');
+  const open = G.issues('labels=bug&state=open');
+  const prs = G.api(`repos/${G.REPO}/pulls?state=open&per_page=50`);
+  const dataOpen = G.issues('labels=data-check&state=open');
+  const line = i => `- #${i.number} ${i.title}`;
+  const md = `# Консилиум ${G.today()}\n\n` +
+    `Коротко: за неделю найдено ${found.length} ошибок, исправлено ${fixed.length}, открыто ${open.length}.\n\n` +
+    `## Найдено за неделю\n${found.map(line).join('\n') || 'нет'}\n\n` +
+    `## Исправлено\n${fixed.map(line).join('\n') || 'нет'}\n\n` +
+    `## Остаются открытыми\n${open.map(line).join('\n') || 'нет'}\n\n` +
+    `## Ждут твоего решения (pull request)\n${prs.map(p => `- PR #${p.number} ${p.title}`).join('\n') || 'нет'}\n\n` +
+    `## Расхождения в статистике\n${dataOpen.map(line).join('\n') || 'нет'}\n`;
+  fs.writeFileSync('council.md', md);
+  console.log('консилиум:', md.length);
+}
