@@ -1,0 +1,45 @@
+name: Таблица КХЛ
+
+# Без ИИ: раз в день берёт таблицу Sports.ru, обновляет TEAMS, проверяет и кладёт в main.
+# Если что-то не сходится — ничего не меняет, запуск краснеет (видно в Actions).
+on:
+  schedule:
+    - cron: '35 6,18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: { group: table, cancel-in-progress: false }
+
+jobs:
+  table:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Таблица
+        run: |
+          cp index.html /tmp/old.html
+          python3 .github/data/update_table.py index.html --write
+          cmp -s index.html /tmp/old.html && { echo "без изменений"; echo "SKIP=1" >> "$GITHUB_ENV"; } || true
+      - name: Защита качества
+        if: env.SKIP != '1'
+        run: python3 .github/data/diff-report.py /tmp/old.html index.html
+      - name: Браузер
+        if: env.SKIP != '1'
+        run: npm init -y >/dev/null && npm install playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: Автопроверка
+        if: env.SKIP != '1'
+        run: node .github/qa/check.js index.html qa-shots
+      - name: Сохранить в main
+        if: env.SKIP != '1'
+        run: |
+          git config user.name "Claude"
+          git config user.email "noreply@anthropic.com"
+          git add index.html
+          git commit -m "Таблица КХЛ по Sports.ru на $(date -u +%F)"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push -q origin main && exit 0; sleep 5; done
+          exit 1
