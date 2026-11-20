@@ -16,3 +16,5 @@ jobs:
       - run: python3 .github/data/scout.py index.html
       - name: Таблица КХЛ (пробный прогон, ничего не пишет)
         run: python3 .github/data/update_table.py index.html
+      - name: Результаты матчей Салавата
+        run: python3 .github/data/check_games.py index.html
