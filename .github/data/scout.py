@@ -8,6 +8,8 @@ URLS = {
     'sports.ru таблица': 'https://www.sports.ru/hockey/tournament/khl/table/',
     'allhockey матчи Салавата': 'https://allhockey.ru/stat/khl/2027/335/teams/13-Salavat_Yulaev/matches',
     'allhockey вратари лиги': 'https://allhockey.ru/stat/khl/2027/335/player/keeper',
+    'khl.ru главная': 'https://www.khl.ru/',
+    'khl.ru таблица': 'https://www.khl.ru/standings/',
     'sport-express игроки': 'https://www.sport-express.net/tag/salavat-yulaev-11/players-stats/',
 }
 
