@@ -18,3 +18,5 @@ jobs:
         run: python3 .github/data/update_table.py index.html
       - name: Результаты матчей Салавата
         run: python3 .github/data/check_games.py index.html
+      - name: Игроки Салавата
+        run: python3 .github/data/check_players.py index.html
