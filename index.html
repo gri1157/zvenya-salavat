@@ -955,6 +955,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
+const APP_VERSION="1.1";
 const UPDATED={n:1,date:"20 ноября 2026",table:"20 ноября",after:"матча с Барысом (18 ноября, 5:3)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -1808,7 +1809,7 @@ function render(){
   const swv=document.getElementById("swSliders");const need=season==="all"?["25","24"]:season==="2"?["25"]:[];
   if(swv.dataset.k!==need.join()){swv.dataset.k=need.join();swv.innerHTML=need.map(k=>`<div class="sl"><label for="sw-${k}"><span>Вес сезона ${SLAB[k]}</span><b id="swv-${k}">×${f1(SW[k])}</b></label><input id="sw-${k}" type="range" min="0" max="1" step="0.1" value="${SW[k]}" data-sw="${k}"><small>текущий сезон всегда ×1</small></div>`).join("")}
   const last=GAMES[GAMES.length-1];
-  document.getElementById("fresh").innerHTML=`<b>№${UPDATED.n}</b> · Обновлено <b>${UPDATED.date}</b>, после ${esc(UPDATED.after)}. ${GAMES.length} ${pl(GAMES.length,MATCH)} в базе.${window.ZV_STANDALONE?` <span>Это отдельная копия приложения: данные в ней меняются, когда владелец выкладывает новую версию.</span>`:""}`;
+  document.getElementById("fresh").innerHTML=`<b>v${APP_VERSION}</b> · №${UPDATED.n} · Обновлено <b>${UPDATED.date}</b>, после ${esc(UPDATED.after)}. ${GAMES.length} ${pl(GAMES.length,MATCH)} в базе.${window.ZV_STANDALONE?` <span>Это отдельная копия приложения: данные в ней меняются, когда владелец выкладывает новую версию.</span>`:""}`;
   segs.forEach(f=>f());
   save();
 }
