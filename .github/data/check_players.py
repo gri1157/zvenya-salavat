@@ -78,7 +78,19 @@ def third(name, lab):
     if not d: return '?'
     key = {'+/-': '+/-', 'Шв': 'Штр', 'М': 'И', 'Г': 'Ш', 'П': 'А'}[lab]
     return d.get(key, '?')
-bad = [b + ' | Allhockey: ' + third(b.split(':')[0], 'Шв' if ' Шв ' in b else ('+/-' if '+/-' in b else 'М')) for b in bad]
+out = []
+for b in bad:
+    if b.startswith('нет на сайте'):
+        out.append(b); continue
+    lab = 'Шв' if ' Шв ' in b else ('+/-' if '+/-' in b else 'М')
+    mine = b.split('приложение ')[1].split(',')[0]
+    t = third(b.split(':')[0], lab)
+    # спорно только если Allhockey не подтверждает приложение (или не знает игрока)
+    if t.replace('+', '') != mine:
+        out.append(b + ' | Allhockey: ' + t)
+    else:
+        print('  (Спорт-Экспресс отстаёт, Allhockey подтверждает приложение:', b.split(' |')[0], ')')
+bad = out
 if bad:
     print('РАСХОЖДЕНИЯ:'); [print(' !', b) for b in bad]; sys.exit(1)
 print('Все цифры совпадают.')
