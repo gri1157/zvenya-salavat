@@ -59,6 +59,26 @@ for row in RAW:
         if v is not None and v != mine:
             bad.append('%s: %s приложение %s, сайт %s' % (name, lab, mine, v))
 print('Сверено игроков:', seen)
+# второй источник — Allhockey: покажет, кто прав в спорных ячейках
+AH = 'https://allhockey.ru/stat/khl/2027/335/teams/13-Salavat_Yulaev/players'
+q = Rows()
+try:
+    q.feed(urllib.request.urlopen(urllib.request.Request(AH, headers=req.headers), timeout=30).read().decode('utf-8', 'replace'))
+except Exception as e:
+    print('Allhockey не открылся:', repr(e)[:120])
+ah = {}
+ahdr = None
+for r in q.rows:
+    if 'Игрок' in r and ('Штр' in r or '+/-' in r):
+        ahdr = r; print('Заголовок Allhockey:', r); continue
+    if ahdr and len(r) == len(ahdr) and r[ahdr.index('Игрок')]:
+        d = dict(zip(ahdr, r)); ah[norm(d['Игрок'])] = d
+def third(name, lab):
+    d = ah.get(norm(name))
+    if not d: return '?'
+    key = {'+/-': '+/-', 'Шв': 'Штр', 'М': 'И', 'Г': 'Ш', 'П': 'А'}[lab]
+    return d.get(key, '?')
+bad = [b + ' | Allhockey: ' + third(b.split(':')[0], 'Шв' if ' Шв ' in b else ('+/-' if '+/-' in b else 'М')) for b in bad]
 if bad:
     print('РАСХОЖДЕНИЯ:'); [print(' !', b) for b in bad]; sys.exit(1)
 print('Все цифры совпадают.')
