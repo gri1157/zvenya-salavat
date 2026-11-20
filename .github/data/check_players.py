@@ -75,6 +75,10 @@ for r in q.rows:
         d = dict(zip(ahdr, r)); ah[norm(d['Игрок'])] = d
 def third(name, lab):
     d = ah.get(norm(name))
+    if not d:  # запасной вариант: единственная фамилия (Родуолд/Роуолд, Маджо/Маджио)
+        last = norm(name).split()[-1][:4]
+        cand = [v for k, v in ah.items() if k.split()[-1][:4] == last]
+        d = cand[0] if len(cand) == 1 else None
     if not d: return '?'
     key = {'+/-': '+/-', 'Шв': 'Штр', 'М': 'И', 'Г': 'Ш', 'П': 'А'}[lab]
     return d.get(key, '?')
