@@ -967,7 +967,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.84.58";
+const APP_VERSION="1.85.59";
 const UPDATED={n:1,date:"20 ноября 2026",table:"21 ноября",after:"матча с Барысом (18 ноября, 5:3)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -2369,6 +2369,7 @@ function renderGM(){
     <div class="tile"><span>Минимум фонда</span><b>${CAP.floor} млн</b><small>${salSum>=CAP.floor?"известная часть выше":"известная часть ниже, остальные зарплаты не публиковались"}</small></div>
    </div>
    <div class="tablewrap"><table class="tight"><thead><tr><th class="l">Игрок</th><th>Млн</th><th>Очки</th><th>На 10 млн</th></tr></thead><tbody>${salT}</tbody></table></div>
+   <div class="actions no-print"><a class="btn" href="https://sport24.ru/hockey/news-845181-kkhl-utverdila-izmeneniya-v-pravovoy-reglament-v-sezone-202627" target="_blank" rel="noopener" data-reg="1">Регламент КХЛ</a></div>
    <p class="note">Зарплата за сезон без бонусов, данные Спорт-Экспресса в июле. «На 10 млн» — сколько очков игрок приносит на каждые 10 млн зарплаты, у вратарей вместо очков % отражённых. Зарплаты Маджо, Загребина, Жаровского, Кузнецова и ещё части игроков в прессе не называли. «Выгодно» и «дорого» — сравнение с серединой команды по очкам на 10 млн. Потолок и минимум: регламент КХЛ на 2026/27.</p></div>
   <div class="grid2">
    <div class="panel jumpt" id="gm-age"><h2>Возраст и легионеры</h2><div class="links">
@@ -2471,7 +2472,7 @@ function agSignals(x){if(!x.sal)return[];const p=P[x.id],a=AHS[p.id],out=[];cons
   const li=STATE.LU.model.lines.findIndex(l=>[l.lw,l.c,l.rw].includes(p)),pi=STATE.LU.model.pairs.findIndex(d=>[d.ld,d.rd].includes(p));
   if(li>=0)out.push([li<2?"g":"m",`в модели ${li+1}-е звено`]);else if(pi>=0)out.push([pi<2?"g":"m",`в модели ${pi+1}-я пара`]);else if(!INJ[p.name])out.push(["w","в модели вне состава"]);
   return out}
-function agText(x){const pool=poolOf(x.pos);return `${x.name} · ${x.team} · ${posName(x.pos)}${ageOf(x)&&ageOf(x)[0]?`, ${yrs(ageOf(x)[0])}`:""}${salOf(x)?`, зарплата ${salOf(x)} млн (по данным прессы)`:""}\n${x.gp} ${pl(x.gp,MATCH)}, ${x.g}+${x.a}=${x.pts}, ${x.pm>0?"+":""}${x.pm}, ${mmss(x.toi)} на льду\nОчки за 60 минут: ${f2(x.p60)} (лучше, чем ${pctRank(pool,x,"p60")}% ${posPl(x.pos)} лиги)\nБроски за 60 минут: ${f1(x.s60)} (лучше, чем ${pctRank(pool,x,"s60")}%)\nВремя на льду: лучше, чем ${pctRank(pool,x,"toi")}%\nДанные Allhockey и Sports.ru на ${UPDATED.date}`}
+function agText(x){const pool=poolOf(x.pos);return `${x.name} · ${x.team} · ${posName(x.pos)}${ageOf(x)&&ageOf(x)[0]?`, ${yrs(ageOf(x)[0])}`:""}\nЗарплата: ${salOf(x)?`${salOf(x)} млн за сезон без бонусов (данные прессы, июль 2026)`:"нет в открытых данных"}\n${x.gp} ${pl(x.gp,MATCH)}, ${x.g}+${x.a}=${x.pts}, ${x.pm>0?"+":""}${x.pm}, ${mmss(x.toi)} на льду\nОчки за 60 минут: ${f2(x.p60)} (лучше, чем ${pctRank(pool,x,"p60")}% ${posPl(x.pos)} лиги)\nБроски за 60 минут: ${f1(x.s60)} (лучше, чем ${pctRank(pool,x,"s60")}%)\nВремя на льду: лучше, чем ${pctRank(pool,x,"toi")}%\nДанные Allhockey и Sports.ru на ${UPDATED.date}`}
 function renderAgent(){
   const el=document.getElementById("agBody");if(!el||!STATE.LU)return;const DB=leagueDB();
   const x=DB.find(y=>y.key===agSel)||DB.find(y=>y.sal&&y.name==="Шелдон Ремпал")||DB[0];agSel=x.key;const pool=poolOf(x.pos);
@@ -2496,9 +2497,9 @@ function renderAgent(){
     <div class="tile"><span>Время на льду</span><b>${mmss(x.toi)}</b><small>за матч</small></div>
     <div class="tile"><span>Очки за 60 минут</span><b>${f2(x.p60)}</b><small>броски ${f1(x.s60)} за 60</small></div>
     <div class="tile"><span>Плюс-минус</span><b>${pmS(x.pm)}</b><small>штраф ${x.pim} мин</small></div>
-    ${sal?`<div class="tile"><span>Зарплата</span><b>${sal} млн</b><small>${f1(x.pts/sal*10)} очка на 10 млн${x.sal&&SALS[x.name]&&SALS[x.name][1]?` · ${esc(SALS[x.name][1])}`:""}</small></div>`:""}
+    ${sal?`<div class="tile"><span>Зарплата</span><b>${sal} млн</b><small>${f1(x.pts/sal*10)} очка на 10 млн${x.sal&&SALS[x.name]&&SALS[x.name][1]?` · ${esc(SALS[x.name][1])}`:""}</small></div>`:`<div class="tile"><span>Зарплата</span><b>—</b><small>нет в открытых данных</small></div>`}
    </div>
-   <div class="actions no-print"><button class="btn${watched?"":" pri"}" data-watch="${esc(x.key)}">${watched?"Убрать из моих":"Следить за игроком"}</button><button class="btn" data-agexp="png">Картинка</button><button class="btn" data-agexp="pdf">PDF для клуба</button><button class="btn" data-agcopy="1">Скопировать текстом</button></div>
+   <div class="actions no-print"><button class="btn${watched?"":" pri"}" data-watch="${esc(x.key)}">${watched?"Убрать из моих":"Следить за игроком"}</button><button class="btn" data-agexp="png">Картинка</button><button class="btn" data-agexp="pdf">PDF для клуба</button><button class="btn" data-agcopy="1">Скопировать текстом</button><a class="btn" href="https://sport24.ru/hockey/news-845181-kkhl-utverdila-izmeneniya-v-pravovoy-reglament-v-sezone-202627" target="_blank" rel="noopener" data-reg="1">Регламент КХЛ</a></div>
    <div id="agOut" class="no-print"></div>
   </div>
   <div class="panel"><div class="sec-head"><h2>Место среди ${posPl(x.pos)} лиги</h2><span class="eyebrow">${pool.length} игроков, от 8 матчей</span></div><div>${bars}</div>
