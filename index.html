@@ -44,6 +44,8 @@ h3{font-size:14px;margin:0;font-weight:600}
 .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .lede{color:var(--muted);margin:0;max-width:62ch}
 .fresh{font-size:12px;color:var(--muted)}
+.fresh-line{font-size:12px;color:var(--muted);margin:0 0 8px}
+.fresh-line.warn{color:var(--bad)}
 .fresh b{color:var(--ink);font-weight:600}
 nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;border-bottom:1px solid var(--line);display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
 nav a{flex:none;font:600 13px var(--body);padding:8px 13px;border-radius:999px;color:var(--ink);text-decoration:none;border:1px solid var(--line);background:var(--surface)}
@@ -695,6 +697,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
   </section>
 
   <section class="view" id="v-plan" aria-label="План на матч" hidden>
+    <div class="pro-fresh" aria-live="polite"></div>
     <div class="panel no-print">
       <div class="ctl-row"><span class="ctl-label">Матч</span><div class="seg" id="planSeg"></div></div>
       <div class="ctl-row"><span class="ctl-label">Состав</span><div class="seg" id="planSrc"><button data-ps="model" aria-pressed="true">Модель на день матча</button><button data-ps="board" aria-pressed="false">Как на вкладке «Состав»</button></div></div>
@@ -705,32 +708,38 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
   <!-- СОПЕРНИК -->
   <section class="view" id="v-rival" aria-label="Соперник" hidden>
+    <div class="pro-fresh" aria-live="polite"></div>
     <div class="seg" id="rivalSeg"></div>
     <div id="rivalBody" class="view"></div>
   </section>
 
   <!-- КАЛЕНДАРЬ И ВРАТАРИ -->
   <section class="view" id="v-sched" aria-label="Календарь и вратари" hidden>
+    <div class="pro-fresh" aria-live="polite"></div>
     <div id="schedBody" class="view"></div>
   </section>
 
   <!-- ВРЕМЯ И БРОСКИ -->
   <section class="view" id="v-toi" aria-label="Время и броски" hidden>
+    <div class="pro-fresh" aria-live="polite"></div>
     <div id="toiBody" class="view"></div>
   </section>
 
   <!-- ГЕНМЕНЕДЖЕР -->
   <section class="view" id="v-gm" aria-label="Генменеджер" hidden>
+    <div class="pro-fresh" aria-live="polite"></div>
     <div id="gmBody" class="view"></div>
   </section>
 
   <!-- АГЕНТ -->
   <section class="view" id="v-agent" aria-label="Агент" hidden>
+    <div class="pro-fresh" aria-live="polite"></div>
     <div id="agBody" class="view"></div>
   </section>
 
   <!-- ФОРМА -->
   <section class="view" id="v-form" aria-label="Форма" hidden>
+    <div class="pro-fresh" aria-live="polite"></div>
     <div class="sec">
       <div class="sec-head"><h2>Команда</h2><span class="eyebrow" id="teamRec"></span></div>
       <div class="strip" id="strip"></div>
@@ -767,6 +776,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
   <!-- СПЕЦБРИГАДЫ -->
   <section class="view" id="v-special" aria-label="Спецбригады" hidden>
+    <div class="pro-fresh" aria-live="polite"></div>
     <div class="sec">
       <div class="sec-head"><h2>Как играют на самом деле</h2><span class="eyebrow">по протоколам сезона</span></div>
       <div class="grid3" id="stTiles"></div>
@@ -957,7 +967,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.83.57";
+const APP_VERSION="1.84.58";
 const UPDATED={n:1,date:"20 ноября 2026",table:"21 ноября",after:"матча с Барысом (18 ноября, 5:3)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -1795,6 +1805,10 @@ function ratingSheet(p){
   <p class="legend">Доли показателей можно поменять в режиме Pro: вкладка «Настройки», раздел «Что важнее». Рейтинг и сила сразу пересчитаются.</p>
   ${p&&p.has?`<div class="actions"><button class="btn" data-backp="${p.id}">К карточке: ${esc(SUR(p.name))}</button></div>`:""}`;
 }
+
+const RU_M={января:1,февраля:2,марта:3,апреля:4,мая:5,июня:6,июля:7,августа:8,сентября:9,октября:10,ноября:11,декабря:12};
+function freshLine(){const m=/(\d{1,2})\s+([а-яё]+)\s+(\d{4})/.exec(UPDATED.date||"");const u=m&&RU_M[m[2]]?new Date(+m[3],RU_M[m[2]]-1,+m[1]):null;const last=GAMES[GAMES.length-1];const ld=last?new Date(last.d+"T00:00:00"):null;const stale=!!(u&&ld&&ld>u);const dd=ld?String(ld.getDate()).padStart(2,"0")+"."+String(ld.getMonth()+1).padStart(2,"0"):"";return `<p class="fresh-line${stale?" warn":""}">Данные на <b>${esc(UPDATED.table||UPDATED.date)}</b>, после ${esc(UPDATED.after)}.${stale?` Матч ${dd} ещё не в базе — цифры на этой вкладке могут отставать.`:""}</p>`}
+function fillFresh(){document.querySelectorAll(".pro-fresh").forEach(e=>{e.innerHTML=freshLine()})}
 function render(){
   SEASON=null;SCHED=null;compute();
   const ALL=P.filter(p=>p.has);
@@ -1807,7 +1821,7 @@ function render(){
   const LU={model:buildModel(F,D,GS)};COACH.forEach(c=>LU[c.id]=fromNames(c,GS,true));if(MINE)LU.mine=fromNames(MINE,GS,false);if(SHARED)LU.shared=fromNames(SHARED.lineup,GS,false);{const PN=peopleNames();if(PN)LU.people=fromNames({f:PN.f,d:PN.d,g:LU.model.g.map(x=>x.name)},GS,false)}
   if(!LU[board])board="model";
   STATE={LU,ALL,GS,F,D};
-  renderBoard();renderRival();renderForm();renderSpecial(special(F,D));renderTable();renderLitePlayers();renderLazy();
+  renderBoard();renderRival();renderForm();renderSpecial(special(F,D));renderTable();renderLitePlayers();renderLazy();fillFresh();
   document.getElementById("seasonNote").textContent={all:`Три сезона вместе: 2026/27 ×1, 2025/26 ×${f1(SW["25"])}, 2024/25 ×${f1(SW["24"])}.`,"2":`Два сезона: 2026/27 ×1, 2025/26 ×${f1(SW["25"])}.`,"26":"Только текущий сезон 2026/27.","f10":lastN?`Голы и передачи за последние матчи (${lastN}), остальное за текущий сезон.`:"Матчей 0: недавней формы нет, берётся весь текущий сезон.","25":"Только сезон 2025/26, все клубы КХЛ.","24":"Только сезон 2024/25, все клубы КХЛ."}[season];
   document.querySelectorAll(".lastn").forEach(r=>{r.hidden=season!=="f10";const inp=r.querySelector("[data-lastn]");inp.max=GAMES.length;inp.value=lastN;r.querySelector("[data-lastn-v]").textContent=lastN})
   const swv=document.getElementById("swSliders");const need=season==="all"?["25","24"]:season==="2"?["25"]:[];
