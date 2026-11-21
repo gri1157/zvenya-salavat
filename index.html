@@ -537,6 +537,8 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 .reg mark{background:color-mix(in srgb,var(--gold) 28%,transparent);color:inherit;border-radius:3px;padding:0 1px}
 .reg-docs{display:flex;flex-direction:column;gap:4px;font-size:13px}
 .reg-docs a{color:var(--accent)}
+#regAi{white-space:pre-wrap;font-size:14px;line-height:1.5}
+#regAi small{display:block;color:var(--muted);font-size:12px;margin-top:6px;white-space:normal}
 /* лучший игрок матча */
 .mvp-row{position:relative;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;margin:6px 0;border-radius:12px;border:1px solid var(--line);overflow:hidden;font-weight:600}
 .mvp-row i{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--sy) 16%,transparent);z-index:0}
@@ -984,7 +986,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.87.61";
+const APP_VERSION="1.87.62";
 const UPDATED={n:1,date:"20 ноября 2026",table:"21 ноября",after:"матча с Барысом (18 ноября, 5:3)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -2494,18 +2496,34 @@ function regRender(){const box=document.getElementById("regRes");if(!box)return;
   if(!q){box.innerHTML=`<p class="note">Напиши вопрос своими словами, например «какой потолок зарплат», «сколько легионеров в заявке», «когда закрывается обмен». Поиск идёт по ${REG.a.length} статьям Правового, Спортивного и Дисциплинарного регламентов.</p>`;return}
   const R=regSearch(q),T=regTerms(q);
   box.innerHTML=R.length?R.map(r=>{const a=REG.a[r.i],d=D[a[0]];return `<div class="reg-hit"><span class="d">${esc(d[1])}</span><span class="t">Статья ${esc(a[1])}. ${regMark(a[2],T)}</span><p>${regMark(a[4],T)}</p><a href="${esc(d[2])}#page=${a[3]}" target="_blank" rel="noopener">Открыть PDF, стр. ${a[3]}</a></div>`}).join(""):`<p class="note">По запросу «${esc(q)}» ничего не нашлось. Попробуй другие слова: «контракт», «обмен», «заявка», «овертайм», «штраф».</p>`}
+
+let regSample=null,regAbort=null;
+(async()=>{try{if(window.claude&&typeof claude.use==="function"){regSample=await claude.use("sample")}}catch(e){regSample=null}})();
+function regAiShow(){const r=document.getElementById("regAiRow");if(r)r.hidden=!regSample||!document.getElementById("regQ").value.trim()}
+async function regAsk(){const q=document.getElementById("regQ").value.trim();const out=document.getElementById("regAi");if(!q||!regSample||!out)return;
+  const D=Object.fromEntries(REG.docs.map(d=>[d[0],d])),R=regSearch(q).slice(0,6);
+  if(!R.length){out.hidden=false;out.textContent="Подходящих статей не нашлось — переформулируй вопрос.";return}
+  const ctx=R.map(r=>{const a=REG.a[r.i];return `[${D[a[0]][1]}, статья ${a[1]} «${a[2]}», стр. ${a[3]}] ${a[4]}`}).join("\n");
+  const prompt=`Ты помогаешь болельщику и менеджеру разобраться в регламентах КХЛ сезона 2026/27. Ответь на вопрос по-русски, коротко (2–5 предложений), простыми словами, ТОЛЬКО по выдержкам ниже. После каждого факта укажи источник в скобках: (документ, ст. N, стр. P). Если в выдержках ответа нет — так и скажи и посоветуй открыть PDF. Не выдумывай цифр.\n\nВопрос: ${q}\n\nВыдержки:\n${ctx}`;
+  regAbort?.abort();regAbort=new AbortController();const btn=document.querySelector("[data-regai]");btn&&(btn.disabled=true);out.hidden=false;out.textContent="Думаю…";
+  try{const r=await regSample(prompt,{modelTier:"quick",signal:regAbort.signal,onText:({text})=>{out.textContent=text}});
+    out.textContent=r.text;out.insertAdjacentHTML("beforeend","<small>Ответ ИИ по кратким изложениям статей; точная формулировка — в PDF по ссылкам ниже.</small>")}
+  catch(e){if(e&&e.name==="AbortError")return;const c=e&&e.code;out.textContent=c==="not_granted"?"ИИ-ответы выключены в разрешениях страницы.":c==="rate_limited"?"Слишком много вопросов подряд — попробуй через минуту.":"Не получилось получить ответ ИИ. Статьи ниже по-прежнему доступны.";if(c==="not_granted"){regSample=null;regAiShow()}}
+  finally{btn&&(btn.disabled=false)}}
 function regOpen(){if(document.getElementById("regBox"))return;const ex=["Потолок зарплат","Минимальная зарплата","Сколько легионеров","Как начисляются очки","Обмен до какого числа","Аренда игрока","Расторжение контракта","Свободный агент ОСА","Буллиты","Список травмированных"];
   const bg=document.createElement("div");bg.className="reg-bg";bg.id="regBg";const el=document.createElement("div");el.className="reg";el.id="regBox";el.setAttribute("role","dialog");el.setAttribute("aria-label","Поиск по регламенту КХЛ");
   el.innerHTML=`<div class="reg-in"><div class="reg-top"><h2>Регламент КХЛ</h2><button class="btn" type="button" data-regclose="1">Закрыть</button></div>
    <input id="regQ" type="search" placeholder="Задай вопрос: например, «потолок зарплат»" autocomplete="off" enterkeyhint="search">
    <div class="seg">${ex.map(e=>`<button type="button" data-regq="${esc(e)}">${esc(e)}</button>`).join("")}</div>
+   <div class="actions" id="regAiRow" hidden><button class="btn pri" type="button" data-regai="1">Ответ ИИ по найденным статьям</button></div>
+   <div id="regAi" class="panel" hidden aria-live="polite"></div>
    <div id="regRes"></div>
    <a class="btn" href="https://helpregl.khl.ru/chat" target="_blank" rel="noopener" style="text-decoration:none;align-self:flex-start">Спросить помощника КХЛ по регламентам (нужен вход)</a>
    <details class="more"><summary>Все документы КХЛ (PDF)</summary><div class="reg-docs">${REG.docs.map(d=>`<a href="${esc(d[2])}" target="_blank" rel="noopener">${esc(d[1])}</a>`).join("")}</div></details>
    <p class="note">Это краткое изложение статей официальных документов КХЛ (${esc(REG.src)}). Точная формулировка — в PDF по кнопке «Открыть PDF». Глоссарий, Технический, Медицинский и Маркетинговый регламенты пока только ссылками.</p></div>`;
-  document.body.append(bg,el);bg.addEventListener("click",regClose);const inp=el.querySelector("#regQ");inp.addEventListener("input",regRender);regRender();setTimeout(()=>inp.focus(),50)}
-function regClose(){document.getElementById("regBox")?.remove();document.getElementById("regBg")?.remove()}
-document.addEventListener("click",e=>{if(e.target.closest("[data-regopen]")){regOpen();return}if(e.target.closest("[data-regclose]")){regClose();return}const q=e.target.closest("[data-regq]");if(q){const i=document.getElementById("regQ");i.value=q.dataset.regq;regRender()}});
+  document.body.append(bg,el);bg.addEventListener("click",regClose);const inp=el.querySelector("#regQ");inp.addEventListener("input",()=>{regRender();regAiShow();const o=document.getElementById("regAi");if(o){o.hidden=true;o.textContent=""}});inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();regAsk()}});regRender();regAiShow();setTimeout(()=>inp.focus(),50)}
+function regClose(){regAbort?.abort();document.getElementById("regBox")?.remove();document.getElementById("regBg")?.remove()}
+document.addEventListener("click",e=>{if(e.target.closest("[data-regopen]")){regOpen();return}if(e.target.closest("[data-regclose]")){regClose();return}const q=e.target.closest("[data-regq]");if(q){const i=document.getElementById("regQ");i.value=q.dataset.regq;regRender();regAiShow();return}if(e.target.closest("[data-regai]"))regAsk();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.getElementById("regBox")){regClose();e.stopPropagation()}},true);
 // ----- агент: карточка игрока
 function agSignals(x){if(!x.sal)return[];const p=P[x.id],a=AHS[p.id],out=[];const nd=NEXT_D();
