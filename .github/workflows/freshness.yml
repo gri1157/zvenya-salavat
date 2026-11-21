@@ -1,0 +1,19 @@
+name: Свежесть данных
+
+# Без ИИ: раз в сутки проверяет, что прошедшие матчи внесены и обновление не отстаёт.
+# Красный запуск = в приложении не хватает матча или обновление старее последней игры.
+on:
+  schedule:
+    - cron: '20 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .github/data/freshness.py index.html
