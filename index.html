@@ -957,7 +957,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.54";
+const APP_VERSION="1.55";
 const UPDATED={n:1,date:"20 ноября 2026",table:"21 ноября",after:"матча с Барысом (18 ноября, 5:3)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -1127,7 +1127,8 @@ const chemSet=arr=>{const b=arr.filter(Boolean);let s=0;for(let i=0;i<b.length;i
 const inLatestCoach=n=>{const c=COACH[0];return c.f.some(l=>l.includes(n))||c.d.some(d=>d.includes(n))};
 // новички: подписаны, но за Салават ещё не играли; в модель идут по прошлым сезонам
 const NEW_OK=new Set(NEWBIES.map(x=>x[0]));
-const inBase=p=>(SEAS["26"][p.name]||[0])[0]>=5||inLatestCoach(p.name)||NEW_OK.has(p.name);
+const inBase=p=>(SEAS["26"][p.name]||[0])[0]>=5||inLatestCoach(p.name)||NEW_OK.has(p.name)||playedLast(p);
+const playedLast=p=>{const g=GAMES[GAMES.length-1];return !!(g&&g.dr&&g.dr.includes(p.id))};
 // форма за последние N матчей
 function formStats(N){const last=GAMES.slice(-N);const out=P.map(()=>({gp:0,g:0,a:0,pp:0}));
   last.forEach(g=>{g.dr.forEach(i=>out[i].gp++);g.g.forEach(e=>{if(!e[0])return;if(e[2]>=0){out[e[2]].g++;if(e[1]==="pp")out[e[2]].pp++}[e[3],e[4]].forEach(x=>{if(x>=0)out[x].a++})})});
@@ -1355,7 +1356,8 @@ function renderBoard(){
   document.getElementById("fives").innerHTML=h;
   document.querySelectorAll("#fives>.five").forEach((el,i)=>{el.querySelectorAll(".row.f>.slot").forEach((x,j)=>x.dataset.k=`f,${i},${j}`);el.querySelectorAll(".row.d>.slot").forEach((x,j)=>x.dataset.k=`d,${i},${j}`)});
   const used=new Set([...lu.lines.flatMap(l=>[l.c,l.lw,l.rw]),...lu.pairs.flatMap(d=>[d.ld,d.rd])].filter(Boolean).map(p=>p.id));
-  const bench=ALL.filter(p=>!used.has(p.id)).sort((a,b)=>(isAvail(b)-isAvail(a))||(b.sc-a.sc));
+  const farmSet=new Set([...TOROS_D,...TOROS_F,...TOLPAR].map(r=>r[0]));
+  const bench=ALL.filter(p=>!used.has(p.id)&&!(INJ[p.name]&&/Торос|Толпар/.test(INJ[p.name][0]))&&!(farmSet.has(p.name)&&!isAvail(p))).sort((a,b)=>(isAvail(b)-isAvail(a))||(b.sc-a.sc));
   const nb=bench.filter(isAvail).length;
   document.getElementById("benchCount").textContent=`${nb} в запасе · ${bench.length-nb} недоступны`;
   document.getElementById("bench").innerHTML=bench.map(p=>{const st=status(p);const av=isAvail(p);return `<button class="chip${av?"":" bad"}" data-id="${p.id}">${p.n} ${esc(SUR(p.name))} · ${p.pos==="F"?"нап":"защ"}${av?"":` · ${st?st[0]:"не в составе"}`}</button>`}).join("")||`<span class="note">Все задействованы.</span>`;
@@ -1376,7 +1378,7 @@ function renderDPairs(){
     const sc=(a.sc+b.sc)/2+(mix?8:0)+(comp?6:0)+ch*4+kz*5;
     rows.push({a,b,mix,comp,ch,kz,n:both.length,gf,ga,sc})}
   rows.sort((x,y)=>y.sc-x.sc);
-  const nm=p=>`<button class="nm" data-id="${p.id}">${esc(SUR(p.name))}</button>${INJ[p.name]?` <span class="bad">${INJ[p.name][0]}</span>`:""}`;
+  const nm=p=>`<button class="nm" data-id="${p.id}">${esc(SUR(p.name))}</button>${INJ[p.name]&&!/Торос|Толпар/.test(INJ[p.name][0])?` <span class="bad">${INJ[p.name][0]}</span>`:""}`;
   const hd=p=>p.hand==="L"?"Л":p.hand==="R"?"П":"?";
   document.getElementById("dpTable").innerHTML=`<thead><tr><th>#</th><th class="l">Пара</th><th>Оценка</th><th class="l">Хват</th><th>Рейтинги</th><th class="l">Роли</th><th>Совм. голы</th><th>У Козлова</th><th>Вместе в заявке</th></tr></thead><tbody>${rows.slice(0,12).map((r,i)=>`<tr><td>${i+1}</td><td class="l">${nm(r.a)} + ${nm(r.b)}</td><td><b>${Math.round(r.sc)}</b></td><td class="l">${hd(r.a)}+${hd(r.b)}${r.mix?` <span class="good">✓</span>`:""}</td><td>${r.a.sc} и ${r.b.sc}</td><td class="l">${r.comp?"атака + надёжность":"—"}</td><td>${r.ch||"—"}</td><td>${r.kz?r.kz+" из "+COACH.length:"—"}</td><td>${r.n?`${r.n} м · ${f1(r.gf/r.n)}:${f1(r.ga/r.n)}`:"—"}</td></tr>`).join("")}</tbody>`;
 }
@@ -1627,7 +1629,7 @@ function renderLitePlayers(){const el=document.getElementById("liteTable");if(!e
   el.innerHTML=`<thead><tr><th>№</th><th class="l">Игрок</th><th>М</th><th>Г</th><th>П</th><th>${T("pts","О")}</th><th>${T("pm","+/-")}</th></tr></thead><tbody>${rows.map(({p,d})=>{const st=status(p);return `<tr><td>${p.n}</td><td class="l"><button class="nm" data-id="${p.id}">${esc(p.name)}</button>${st?` <small class="bad">${esc(st[0])}</small>`:""}</td><td>${d[0]}</td><td>${d[1]}</td><td>${d[2]}</td><td><b>${d[1]+d[2]}</b></td><td>${pmS(d[3])}</td></tr>`}).join("")}</tbody>`;
   document.querySelectorAll("#litePf button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lpf===litePf)));
   const gk=(STATE.GS||[]).map(g=>{const ap=GAMES.map(x=>gLines(x).find(r=>r[0]===g.name)).filter(Boolean);const sa=ap.reduce((s,r)=>s+r[2],0),sv=ap.reduce((s,r)=>s+r[3],0);return{g,n:ap.length,p:sa?sv/sa:null}}).filter(x=>x.n).sort((a,b)=>b.n-a.n);
-  document.getElementById("liteGk").innerHTML=gk.map(({g,n,p})=>`<div class="link"><span><button class="nm" data-gk="${esc(g.name)}">${g.n} ${esc(g.name)}</button> <small>${n} ${pl(n,MATCH)}${GINJ[g.name]?", "+esc(GINJ[g.name][0]):""}</small></span><b>${p!=null?f1(p*100)+"%":"—"}</b></div>`).join("")||`<p class="note">В этом сезоне вратари ещё не играли.</p>`;
+  document.getElementById("liteGk").innerHTML=gk.map(({g,n,p})=>`<div class="link"><span><button class="nm" data-gk="${esc(g.name)}">${g.n} ${esc(g.name)}</button> <small>${n} ${pl(n,MATCH)}${GINJ[g.name]&&!/Торос|Толпар/.test(GINJ[g.name][0])?", "+esc(GINJ[g.name][0]):""}</small></span><b>${p!=null?f1(p*100)+"%":"—"}</b></div>`).join("")||`<p class="note">В этом сезоне вратари ещё не играли.</p>`;
 }
 // ===== ПОДСКАЗКИ ПО ТЕРМИНАМ: [заголовок, текст, показать ли ссылку «как считается рейтинг»] =====
 const TERMS={
@@ -1856,7 +1858,7 @@ function planData(){
   if(!SIMP||SIMP.key!==key)SIMP={key,...simulate(lS,lO,20000)};
   const sk=[...lu.lines.flatMap(l=>[l.lw,l.c,l.rw]),...lu.pairs.flatMap(d=>[d.ld,d.rd])].filter(Boolean);const used=new Set(sk.map(p=>p.id));
   const spare=STATE.ALL.filter(p=>!used.has(p.id)&&!outOn(p.name,x.d)&&OV[p.name]!==false&&inBase(p)).sort((a,b)=>b.sc-a.sc);
-  const hurt=[...Object.keys(INJ),...Object.keys(GINJ)];
+  const hurt=[...Object.keys(INJ),...Object.keys(GINJ)].filter(n=>!/Торос|Толпар/.test((INJ[n]||GINJ[n])[0]));
   const fives=lu.lines.map((l,i)=>{const d=lu.pairs[i]||{};const m=[l.lw,l.c,l.rw,d.ld,d.rd].filter(Boolean);return{i,m,def:m.length?m.reduce((s,p)=>s+p.pmg*2+p.bpg*.6-p.pimg*.3,0)/m.length:0,sh:m.reduce((s,p)=>s+p.spg,0)}});
   PLANX={x,lu,gk,rot,opp,O,S,sim:SIMP,spare,outs:hurt.filter(n=>outOn(n,x.d)),back:hurt.filter(n=>!outOn(n,x.d)),sp:special(B.F,B.D),
     heavy:sk.filter(p=>heavyLoad(AHS[p.id])).sort((a,b)=>AHS[b.id].avg3-AHS[a.id].avg3),fives,R:RIVALS.find(r=>r.name===x.o)||null,src:planSrc==="model"?"модель на день матча":curLabel(),srcS:planSrc==="model"?"модель":board==="mine"?"мой вариант":curLabel()};
@@ -1950,12 +1952,12 @@ function renderSched(){
   const pg=GAMES.filter(g=>g.gk&&g.gk[0]!=="?");let streak=0;const lastG=pg.length?pg[pg.length-1].gk[0]:null;for(let i=pg.length-1;i>=0&&pg[i].gk[0]===lastG;i--)streak++;
   const calRows=rot.map(({x,st,why})=>{const o=tIdx(x.o);const fl=tripFlags(x);return `<div class="lf cal"><span class="n">${dShort(x.d)}</span><span class="t">${x.h?"":"@ "}${esc(x.o)} <span>· сила ${o?oppStr(o).rating:"—"}</span></span><b>${st?esc(SUR(st.name)):"—"}</b><small>${wday(x.d)}, ${ufaT(x.t)} · отдых ${x.rest==null?"—":x.rest} · ${x.km?`${kmS(x.km)} км`:"без перелёта"} · вратарь: ${esc(why)}${fl?`<br>${fl}`:""}</small></div>`}).join("");
   const gsum=(STATE.GS||[]).map(g=>{const ap=GAMES.map(x=>gLines(x).find(r=>r[0]===g.name)).filter(Boolean);if(!ap.length)return"";const sa=ap.reduce((s,r)=>s+r[2],0),sv=ap.reduce((s,r)=>s+r[3],0);const ns=starts[g.name]||0;
-    return `<div class="link"><span>${esc(SUR(g.name))} <small>${ns} ${pl(ns,["старт","старта","стартов"])}, ${ap.length} ${pl(ap.length,MATCH)}${g.last5?`, последние ${g.last5.n}: ${f1(g.last5.svp*100)}%`:""}${GINJ[g.name]?", "+esc(GINJ[g.name][0]):""}</small></span><b>${sa?f1(sv/sa*100)+"%":"—"}</b></div>`}).join("");
+    return `<div class="link"><span>${esc(SUR(g.name))} <small>${ns} ${pl(ns,["старт","старта","стартов"])}, ${ap.length} ${pl(ap.length,MATCH)}${g.last5?`, последние ${g.last5.n}: ${f1(g.last5.svp*100)}%`:""}${GINJ[g.name]&&!/Торос|Толпар/.test(GINJ[g.name][0])?", "+esc(GINJ[g.name][0]):""}</small></span><b>${sa?f1(sv/sa*100)+"%":"—"}</b></div>`}).join("");
   const glog=GAMES.slice(-10).reverse().map(g=>{const ls=gLines(g);return `<tr><td class="l">${dShort(g.d)}</td><td class="l">${g.h?"":"@ "}${esc(g.o)}</td><td>${g.gf}:${g.ga}${g.x?" "+g.x:""}</td><td class="l">${ls.map(r=>`${esc(SUR(r[0]))} ${r[3]} из ${r[2]}${r[1]<3300?` <small>${mmss(r[1])} на льду</small>`:""}`).join("<br>")||"—"}</td><td>${ls.map(r=>r[2]?f1(r[3]/r[2]*100)+"%":"—").join("<br>")||"—"}</td></tr>`}).join("");
   const last7=GAMES.filter(g=>{const k=dayDiff(g.d,ref);return k>=1&&k<=7});
   const load=P.map(p=>{let m=0,n=0;last7.forEach(g=>{const a=AHBY[g.d];const r=a&&a[4]&&a[4].find(z=>z[0]===p.id);if(r){m+=r[1];n++}});return{p,m,n,a:AHS[p.id]}}).filter(o=>o.n).sort((a,b)=>b.m-a.m).slice(0,14);
   const loadRows=load.map(({p,m,n,a})=>`<tr><td class="l"><button class="nm" data-id="${p.id}">${esc(p.name)}</button></td><td>${n}</td><td>${Math.round(m/60)}</td><td class="${heavyLoad(a)?"bad":""}">${mmss(a.avg3)}</td><td>${mmss(a.avg)}</td></tr>`).join("");
-  const inj=[...Object.entries(INJ),...Object.entries(GINJ)].map(([n,s])=>{const rt=RET[n];const d=rt&&rt[0];const g=d?upcoming().find(x=>x.d>=d):null;return{n,s,d,g,note:rt?rt[1]:s[1]}}).sort((a,b)=>(a.d||"9")<(b.d||"9")?-1:(a.d||"9")>(b.d||"9")?1:0);
+  const inj=[...Object.entries(INJ),...Object.entries(GINJ)].filter(([n,s])=>!/Торос|Толпар/.test(s[0])).map(([n,s])=>{const rt=RET[n];const d=rt&&rt[0];const g=d?upcoming().find(x=>x.d>=d):null;return{n,s,d,g,note:rt?rt[1]:s[1]}}).sort((a,b)=>(a.d||"9")<(b.d||"9")?-1:(a.d||"9")>(b.d||"9")?1:0);
   el.innerHTML=`
   <div class="grid3">
    <div class="tile"><span>Ближайшие 7 дней</span><b>${n7} ${pl(n7,MATCH)}</b><small>за 14 дней ${n14}</small></div>
@@ -2321,7 +2323,7 @@ function renderGM(){
   const ppm=salRows.filter(r=>r.x&&r.x.gp>=5).map(r=>r.x.pts/r.v[0]*10).sort((a,b)=>a-b),ppmMed=ppm.length?ppm[Math.floor(ppm.length/2)]:0;
   const salT=salRows.map(({n,v,x,gk})=>{const val=x?x.pts/v[0]*10:null;const c=val==null?"":val>=ppmMed*1.4?"g":val<=ppmMed*.6?"w":"m";
     const sub=[x?`${x.gp} ${pl(x.gp,MATCH)}, ${mmss(x.toi)} на льду`:gk?`вратарь, ${gk[1]} ${pl(gk[1],MATCH)}`:null,v[1]||null].filter(Boolean).join(" · ");
-    return `<tr><td class="l nmc">${x||gk?`<button class="nm" data-agopen="${esc("Салават Юлаев|"+n)}">${esc(SUR(n))}</button>`:esc(SUR(n))}${INJ[n]?` <small class="bad">${esc(INJ[n][0])}</small>`:""}${sub?`<br><small>${esc(sub)}</small>`:""}</td><td><b>${v[0]}</b></td><td>${x?`${x.g}+${x.a}`:gk&&gk[4]?f1(gk[5]/gk[4]*100)+"%":"—"}</td><td>${val!=null?`${f1(val)}<br>${flagT(c,c==="g"?"выгодно":c==="w"?"дорого":"норма")}`:"—"}</td></tr>`}).join("");
+    return `<tr><td class="l nmc">${x||gk?`<button class="nm" data-agopen="${esc("Салават Юлаев|"+n)}">${esc(SUR(n))}</button>`:esc(SUR(n))}${INJ[n]&&!/Торос|Толпар/.test(INJ[n][0])?` <small class="bad">${esc(INJ[n][0])}</small>`:""}${sub?`<br><small>${esc(sub)}</small>`:""}</td><td><b>${v[0]}</b></td><td>${x?`${x.g}+${x.a}`:gk&&gk[4]?f1(gk[5]/gk[4]*100)+"%":"—"}</td><td>${val!=null?`${f1(val)}<br>${flagT(c,c==="g"?"выгодно":c==="w"?"дорого":"норма")}`:"—"}</td></tr>`}).join("");
   // 5. возраст и легионеры
   const luAll=[...lu.lines.flatMap(l=>[l.lw,l.c,l.rw]),...lu.pairs.flatMap(d=>[d.ld,d.rd])].filter(Boolean);const ages=luAll.map(p=>AGE[p.name]&&AGE[p.name][0]).filter(Boolean);
   const avgAge=ages.length?ages.reduce((s,a)=>s+a,0)/ages.length:0,young=luAll.filter(p=>AGE[p.name]&&AGE[p.name][0]<=22),vet=luAll.filter(p=>AGE[p.name]&&AGE[p.name][0]>=32);
