@@ -2500,6 +2500,7 @@ function regOpen(){if(document.getElementById("regBox"))return;const ex=["Пот
    <input id="regQ" type="search" placeholder="Задай вопрос: например, «потолок зарплат»" autocomplete="off" enterkeyhint="search">
    <div class="seg">${ex.map(e=>`<button type="button" data-regq="${esc(e)}">${esc(e)}</button>`).join("")}</div>
    <div id="regRes"></div>
+   <a class="btn" href="https://helpregl.khl.ru/chat" target="_blank" rel="noopener" style="text-decoration:none;align-self:flex-start">Спросить помощника КХЛ по регламентам (нужен вход)</a>
    <details class="more"><summary>Все документы КХЛ (PDF)</summary><div class="reg-docs">${REG.docs.map(d=>`<a href="${esc(d[2])}" target="_blank" rel="noopener">${esc(d[1])}</a>`).join("")}</div></details>
    <p class="note">Это краткое изложение статей официальных документов КХЛ (${esc(REG.src)}). Точная формулировка — в PDF по кнопке «Открыть PDF». Глоссарий, Технический, Медицинский и Маркетинговый регламенты пока только ссылками.</p></div>`;
   document.body.append(bg,el);bg.addEventListener("click",regClose);const inp=el.querySelector("#regQ");inp.addEventListener("input",regRender);regRender();setTimeout(()=>inp.focus(),50)}
