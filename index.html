@@ -2373,7 +2373,7 @@ function renderGM(){
   const toc=[["gm-weak","Где тонко"],["gm-farm","Фарм"],["gm-sal","Зарплаты"],["gm-age","Возраст"],["gm-gk","Вратари лиги"],["gm-buy","Кем усилить"],["gm-fc","Прогноз"],["gm-cal","Календарь"]].map(([k,l])=>`<button class="chip" data-jump="${k}">${l}</button>`).join("");
   el.innerHTML=`
   <p class="note">Сверки данных: ${chOk} из ${CH.length} пройдено. Подробно на вкладке <a href="#method">«Как считается»</a>.</p>
-  <div class="actions no-print"><button class="btn pri" type="button" data-regopen="1">Регламент КХЛ: поиск</button></div>
+  <div class="actions no-print"><button class="btn" type="button" data-regopen="1">Регламент КХЛ: поиск</button></div>
   <div class="toc no-print">${toc}</div>
   <div class="grid3">
    <div class="tile"><span>Место на ${conf==="Восток"?"Востоке":"Западе"}</span><b>${me.lo===me.hi?me.med:`${me.lo}–${me.hi}`}</b><small>чаще всего ${me.med}-е</small></div>
