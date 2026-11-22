@@ -16,8 +16,8 @@ DOCS = [
  ["eth","Кодекс этики КХЛ","https://www.khl.ru/documents/KHL_code_of_ethics_2025.pdf"],
  ["cal","Календарь регулярного чемпионата 2026/27","https://www.khl.ru/documents/KHL_calendar_2026-2027_regular.pdf"],
  ["po","Структура и сроки плей-офф 2026/27","https://www.khl.ru/documents/KHL_calendar_2026-2027_playoff.pdf"],
- ["rec","Книга рекордов КХЛ 2026",""],
- ["clubs","Список клубов-участников КХЛ 2025/26",""],
+ ["rec","Книга рекордов КХЛ 2026","https://www.khl.ru/documents/KHL_Records_book_2026.pdf"],
+ ["clubs","Список клубов-участников КХЛ 2025/26","https://www.khl.ru/upload/documents/spisok_klubov_uchastnikov_2025-2026.pdf"],
  ["time","Время начала домашних матчей 2026/27","https://www.khl.ru/documents/games_time_beginning_2026-2027.pdf"],
 ]
 
