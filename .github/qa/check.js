@@ -40,6 +40,22 @@ const PRO = ['board', 'plan', 'rival', 'sched', 'toi', 'form', 'special', 'leade
       if (shots) { fs.mkdirSync(shots, { recursive: true }); await pg.screenshot({ path: path.join(shots, `${ui}-${v}.png`) }); }
     }
   }
+  // Роли Генменеджер и Агент + диалог поиска по регламенту
+  for (const role of ['gm', 'agent']) {
+    await pg.goto(url + '#board');
+    await pg.click('[data-uiset="pro"]').catch(() => {});
+    await pg.click(`[data-roleset="${role}"]`).catch(() => {});
+    await pg.waitForTimeout(400);
+    const w = await pg.evaluate(() => document.documentElement.scrollWidth);
+    if (w > 391) res.overflow.push(`pro/${role}: ширина ${w}`);
+    const hasBtn = await pg.evaluate(() => !!document.querySelector('[data-regopen]'));
+    if (!hasBtn) res.failedChecks.push(`нет кнопки регламента в роли ${role}`);
+    if (shots) { fs.mkdirSync(shots, { recursive: true }); await pg.screenshot({ path: path.join(shots, `pro-${role}.png`) }); }
+  }
+  await pg.click('[data-regopen]').catch(() => {});
+  await pg.waitForTimeout(300);
+  const regOk = await pg.evaluate(() => typeof regSearch === 'function' && !!REG && REG.a.length > 100);
+  if (!regOk) res.failedChecks.push('поиск по регламенту не работает');
   await b.close();
   fs.unlinkSync(tmp);
   res.ok = !res.errors.length && !res.failedChecks.length && !res.overflow.length;
