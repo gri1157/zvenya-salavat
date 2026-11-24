@@ -7,8 +7,6 @@ on:
   schedule:
     - cron: '50 4 * * *'   # 09:50 по Уфе, до сборщика данных
   workflow_dispatch:
-  push:
-    branches: ['data/league-teams']   # временно: первое заполнение в ветке PR
 
 permissions:
   contents: write
