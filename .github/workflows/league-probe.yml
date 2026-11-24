@@ -11,4 +11,4 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: npm init -y >/dev/null && npm install playwright@1.48.2 && npx playwright install --with-deps chromium
-      - run: node .github/data/league_probe.js
+      - run: node .github/data/league_build.js index.html --dry
