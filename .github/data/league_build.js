@@ -69,7 +69,11 @@ function validate(res, appTeams) {
     const x = res[n];
     if (x.pts !== 2 * (x.w + x.otw + x.sow) + x.sol + x.otl) bad.push(`${n}: очки ${x.pts} ≠ 2×победы + поражения в ОТ/Б`);
     if (x.w + x.otw + x.sow + x.sol + x.otl + x.l !== x.gp) bad.push(`${n}: сумма исходов ≠ матчам`);
-    if (x.h[0] + x.r[0] !== x.gp || x.h[5] + x.r[5] !== x.gf || x.h[6] + x.r[6] !== x.ga) bad.push(`${n}: дома + в гостях ≠ всего`);
+    if (x.h[0] + x.r[0] !== x.gp || x.h[5] + x.r[5] !== x.gf || x.h[6] + x.r[6] !== x.ga) {
+      // на сайте раздел «дома / в гостях» иногда отстаёт на последний матч — тогда его не показываем, остальное берём
+      console.log(`внимание: ${n}: дома ${x.h} + в гостях ${x.r} ≠ всего (${x.gp} матчей, ${x.gf}:${x.ga}) — разбивку дома/в гостях пропускаю`);
+      x.h = x.r = null;
+    }
     const pf = x.p.reduce((s, q) => s + q[0], 0), pa = x.p.reduce((s, q) => s + q[1], 0);
     if (pf > x.gf || x.gf - pf > x.sow || pa > x.ga || x.ga - pa > x.sol) bad.push(`${n}: голы по периодам ${pf}:${pa} не сходятся с ${x.gf}:${x.ga}`);
     if (x.ppg > x.ppo || x.ppga > x.pko) bad.push(`${n}: голов в большинстве больше, чем большинств`);
