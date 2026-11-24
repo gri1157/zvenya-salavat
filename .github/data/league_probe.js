@@ -1,23 +1,18 @@
-// Проба: вкладки командной статистики khl.ru и их столбцы. Ничего не меняет.
+// Проба: где на khl.ru переключатели командной статистики. Ничего не меняет.
 const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch();
   const p = await b.newPage({ locale: 'ru-RU', userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36' });
-  const grab = async (url) => {
-    await p.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
-    await p.waitForTimeout(2500);
-    return p.evaluate(() => ({
-      links: [...new Set([...document.querySelectorAll('a[href*="/stat/teams/"]')].map(a => a.getAttribute('href') + ' | ' + a.textContent.trim().replace(/\s+/g, ' ').slice(0, 40)))],
-      selects: [...document.querySelectorAll('select,option')].slice(0, 40).map(o => (o.value || '') + ':' + o.textContent.trim().slice(0, 30)),
-      tables: [...document.querySelectorAll('table')].map(t => ({ rows: t.querySelectorAll('tr').length, head: [...(t.querySelector('tr')?.children || [])].map(c => c.textContent.trim().replace(/\s+/g, ' ')), r1: [...(t.querySelectorAll('tr')[1]?.children || [])].map(c => c.textContent.trim().replace(/\s+/g, ' ')) })),
-    }));
-  };
-  const first = await grab('https://www.khl.ru/stat/teams/1436/');
-  console.log('BASE', JSON.stringify(first));
-  const tabs = [...new Set(first.links.map(l => l.split(' | ')[0]).filter(h => /\/stat\/teams\/1436\/[a-z_]+\/?$/.test(h)))];
-  for (const t of tabs) {
-    try { const r = await grab(new URL(t, 'https://www.khl.ru').href); console.log('TAB', t, JSON.stringify(r.tables)); }
-    catch (e) { console.log('FAIL', t, String(e).slice(0, 200)); }
-  }
+  const reqs = [];
+  p.on('request', r => { const u = r.url(); if (/khl\.ru/.test(u) && !/\.(png|jpg|svg|css|woff2?|gif|webp)(\?|$)/.test(u)) reqs.push(r.method() + ' ' + u); });
+  await p.goto('https://www.khl.ru/stat/teams/1436/', { waitUntil: 'networkidle', timeout: 60000 });
+  await p.waitForTimeout(2500);
+  const r = await p.evaluate(() => {
+    const kw = /Брос|Больш|Меньш|Вбрас|Штраф|Период|Удален|Реализ|Нейтрал|Общ|Сэйв|Отраж/;
+    return [...document.querySelectorAll('a,button,li,span,div,option,label')].filter(e => e.children.length <= 2 && kw.test(e.textContent) && e.textContent.trim().length < 50)
+      .slice(0, 60).map(e => e.tagName + ' ' + e.textContent.trim().replace(/\s+/g, ' ') + ' :: ' + e.outerHTML.slice(0, 220).replace(/\s+/g, ' '));
+  });
+  console.log('NAV', JSON.stringify(r, null, 1));
+  console.log('REQS', JSON.stringify(reqs.slice(0, 60), null, 1));
   await b.close();
 })();
