@@ -23,6 +23,7 @@ import re
 import sys
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qsl, unquote
@@ -239,6 +240,8 @@ def kb_url(text="🏒 Играть", param="game"):
 
 
 def group_push(text, silent=False, **extra):
+    """Сообщение во все чаты болельщиков; возвращает [(чат, номер сообщения)] — по ним потом дописываем передачи."""
+    out = []
     for cid, gr in list(load("groups").items()):
         if not gr.get("on"):
             continue
@@ -247,7 +250,11 @@ def group_push(text, silent=False, **extra):
             with LOCK:
                 load("groups")[cid]["on"] = False
                 save("groups")
+        mid = ((r or {}).get("result") or {}).get("message_id")
+        if mid:
+            out.append([int(cid), mid])
         time.sleep(0.05)
+    return out
 
 
 def season_table(limit=10):
@@ -795,7 +802,8 @@ SE_WHO = SE_WORD + r"(?: " + SE_WORD + r"){0,3}"
 SE_KIND = r"(?i:гол!?|штраф)"
 # время, игрок, «ГОЛ!» или «штраф»; после гола — счёт (но не время следующего события)
 SE_EV = re.compile(r"(?<![\d:])(\d{1,3}):(\d{2})\s+(" + SE_WHO + r")\s+(" + SE_KIND + r")"
-                   r"(?:\s+(\d{1,2})\s*:\s*(\d{1,2})(?![\d:])(?!\s+" + SE_WHO + r"\s+" + SE_KIND + r"))?")
+                   r"(?:\s+(\d{1,2})\s*:\s*(\d{1,2})(?![\d:])(?!\s+" + SE_WHO + r"\s+" + SE_KIND + r"))?"
+                   r"(?:\s*[-–—]\s*([а-яё][а-яё ,\.\-]*?)(?=\s*(?:\d|$|[А-ЯЁ])))?")
 SE_PER = re.compile(r"(?<![\d:])([1-3])(?:-й)?\s+период\s+\d{1,2}\s*:\s*\d{1,2}(?![\d:])", re.I)
 SE_OT = re.compile(r"(?<![а-яё])(?:овертайм|ОТ)\s+\d{1,2}\s*:\s*\d{1,2}(?![\d:])", re.I)
 SE_SO = re.compile(r"(?<![а-яё])(?:буллиты|серия буллитов|послематчевые буллиты)\s+\d{1,2}\s*:\s*\d{1,2}(?![\d:])", re.I)
@@ -811,7 +819,7 @@ def parse_se(page):
     period = 0
     for m in SE_PER.finditer(txt):
         period = max(period, int(m.group(1)))
-    goals = []
+    goals, pens = [], []
     for m in SE_EV.finditer(txt):
         t = int(m.group(1)) * 60 + int(m.group(2))
         period = max(period, 1 if t <= 1200 else 2 if t <= 2400 else 3 if t <= 3600 else 4)
@@ -819,12 +827,17 @@ def parse_se(page):
             row = (t, m.group(3), int(m.group(5)), int(m.group(6)))
             if row not in goals:
                 goals.append(row)
+        elif m.group(4).lower() == "штраф":
+            row = (t, m.group(3), (m.group(7) or "").strip(" .,-"))
+            if row[:2] not in [x[:2] for x in pens]:
+                pens.append(row)
     goals.sort(key=lambda r: (r[0], r[2] + r[3]))
+    pens.sort()
     if SE_OT.search(txt):
         period = max(period, 4)
     if SE_SO.search(txt):
         period = 5
-    return {"period": period, "goals": goals, "ours": "Салават" in txt}
+    return {"period": period, "goals": goals, "pens": pens, "ours": "Салават" in txt}
 
 
 def se_state(page, mid):
@@ -872,15 +885,50 @@ def score_line(g, us, them):
 
 
 def push(text, silent=False, groups=True, **extra):
-    """Сообщение всем, у кого включён «Матч онлайн» (включён по умолчанию, выключается /goals), и в чаты болельщиков."""
-    for uid, sb in list(load("subs").items()):
-        if sb.get("on") and sb.get("goals", True):
-            r = tg("sendMessage", chat_id=int(uid), text=text, disable_notification=silent, **extra)
-            if r and r.get("error_code") == 403:
-                set_sub(uid, False)
-            time.sleep(0.05)
+    """Сообщение всем, у кого включён «Матч онлайн» (включён по умолчанию, выключается /goals), и в чаты болельщиков.
+    Шлёт в 4 потока (до ~25 сообщений в секунду, лимит Telegram — 30), чтобы последний подписчик не ждал минуту.
+    Возвращает [(чат, номер сообщения)]."""
+    uids = [uid for uid, sb in list(load("subs").items()) if sb.get("on") and sb.get("goals", True)]
+
+    def one(uid):
+        r = tg("sendMessage", chat_id=int(uid), text=text, disable_notification=silent, **extra)
+        if r and r.get("error_code") == 403:
+            set_sub(uid, False)
+        time.sleep(0.05)
+        mid = ((r or {}).get("result") or {}).get("message_id")
+        return [int(uid), mid] if mid else None
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        out = [x for x in ex.map(one, uids) if x]
     if groups:
-        group_push(text, silent=silent, **extra)
+        out += group_push(text, silent=silent, **extra)
+    return out
+
+
+def goal_text(g, head, us, them, who, t, ast):
+    return f"{head}\n{score_line(g, us, them)}\n🏒 {who}{' (' + ', '.join(ast) + ')' if ast else ''}, {t // 60}:{t % 60:02d}"
+
+
+def assists_tick(d, g, st, now):
+    """Голы, у которых ещё нет передач: раз в 20 секунд спрашиваем Sports.ru и дописываем передачи в уже
+    отправленные сообщения (сам гол уходит сразу, не дожидаясь их). Через 10 минут перестаём искать."""
+    keep = []
+    for p in st.get("pend", []):
+        if now - p["t0"] > 600:
+            continue
+        if now - p.get("nt", 0) < 20:
+            keep.append(p)
+            continue
+        p["nt"] = now
+        ast = sr_assists(d, g, p["t"], p["who"])
+        if not ast:
+            keep.append(p)
+            continue
+        text = goal_text(g, p["head"], p["us"], p["them"], p["who"], p["t"], ast)
+        for cid, mid in p["msgs"]:
+            tg("editMessageText", chat_id=cid, message_id=mid, text=text)
+            time.sleep(0.03)
+    st["pend"] = keep
 
 
 def live_set(d, g, now, us, them, period, feed):
@@ -915,6 +963,8 @@ def live_tick(now):
     late = st is None and now - g["kickoff"] > 900  # сервер запустили посреди матча: старое не рассылаем
     if st is None:
         st = {"kick": False, "p": 0, "goals": [], "src": "", "down": 0}
+    st.setdefault("pens", [])
+    st.setdefault("pend", [])
     teams = f"Салават Юлаев — {g['o']}" if g.get("home") else f"{g['o']} — Салават Юлаев"
     if not st["kick"] and now >= g["kickoff"]:
         st["kick"] = True
@@ -969,10 +1019,25 @@ def live_tick(now):
                 st["goals"].append(k)
                 if late:
                     continue
-                ast = sr_assists(d, g, t, who)
-                head = "🚨 ГОЛ «САЛАВАТА»!" if mine else f"Гол {g['o']}" if mine is False else "Гол!"
-                push(f"{head}\n{score_line(g, us, them)}\n🏒 {who}{' (' + ', '.join(ast) + ')' if ast else ''}, {t // 60}:{t % 60:02d}",
-                     silent=mine is False)
+                ot = " В ОВЕРТАЙМЕ" if t > 3600 else ""
+                head = (f"🚨 ГОЛ «САЛАВАТА»{ot}!" if mine else f"Гол {g['o']}{ot.lower()}" if mine is False else f"Гол{ot.lower()}!")
+                # гол уходит сразу; передачи допишем в это же сообщение, когда их опубликуют
+                msgs = push(goal_text(g, head, us, them, who, t, []), silent=mine is False)
+                st["pend"].append({"t": t, "who": who, "head": head, "us": us, "them": them, "msgs": msgs, "t0": now})
+        # удаления обеих команд
+        ours = our_surnames()
+        for t, who, why in se.get("pens", []):
+            k = f"{t}|{who}"
+            if k in st["pens"]:
+                continue
+            st["pens"].append(k)
+            if late:
+                continue
+            mine = who.split()[-1] in ours if ours else None
+            team = " («Салават Юлаев»)" if mine else f" ({g['o']})" if mine is False else ""
+            push(f"⛔ Удаление{team}\n{who}{' — ' + why if why else ''}, {t // 60}:{t % 60:02d}", silent=mine is False)
+        if st["pend"]:
+            assists_tick(d, g, st, now)
         us, them = (rows[-1][4], rows[-1][5]) if rows else (0, 0)
         stt = se.get("state") or {}
         if stt.get("code") == "finished" and not st.get("fin") and st["src"] == "se":
@@ -1000,14 +1065,14 @@ def live_tick(now):
 
 
 def live_loop():
-    """Во время матча раз в полминуты читает страницу матча и рассылает начало периодов и голы."""
+    """Во время матча раз в 10 секунд читает страницу матча и рассылает начало периодов и голы."""
     while True:
         on = False
         try:
             on = bool(TOKEN) and live_tick(time.time())
         except Exception as e:
             print("матч онлайн:", e, file=sys.stderr)
-        time.sleep(30 if on else 60)
+        time.sleep(10 if on else 60)  # во время матча — раз в 10 секунд
 
 
 def set_goals(uid, on):
