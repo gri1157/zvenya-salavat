@@ -1,0 +1,11 @@
+name: Проба лиги
+on:
+  push:
+    branches: ['data/league-teams']
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .github/data/league_probe.py
