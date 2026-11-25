@@ -9,7 +9,7 @@ const path = require('path');
 const src = path.resolve(process.argv[2] || 'index.html');
 const shots = process.argv[3] || '';
 const LITE = ['board', 'game', 'games', 'table', 'leaders', 'players'];
-const PRO = ['board', 'plan', 'rival', 'sched', 'toi', 'form', 'special', 'leaders', 'players', 'settings', 'method'];
+const PRO = ['match', 'match-post', 'team', 'plr', 'gk', 'opp', 'club', 'club-agent', 'club-model', 'league'];
 
 (async () => {
   let html = fs.readFileSync(src, 'utf8');
@@ -40,11 +40,11 @@ const PRO = ['board', 'plan', 'rival', 'sched', 'toi', 'form', 'special', 'leade
       if (shots) { fs.mkdirSync(shots, { recursive: true }); await pg.screenshot({ path: path.join(shots, `${ui}-${v}.png`) }); }
     }
   }
-  // Роли Генменеджер и Агент + диалог поиска по регламенту
-  for (const role of ['gm', 'agent']) {
+  // Клуб: Генменеджер и Агент (бывшие роли) + диалог поиска по регламенту
+  for (const role of ['club', 'club-agent']) {
     await pg.goto(url + '#board');
     await pg.click('[data-uiset="pro"]').catch(() => {});
-    await pg.click(`[data-roleset="${role}"]`).catch(() => {});
+    await pg.goto(url + '#' + role);
     await pg.waitForTimeout(400);
     const w = await pg.evaluate(() => document.documentElement.scrollWidth);
     if (w > 391) res.overflow.push(`pro/${role}: ширина ${w}`);
