@@ -5,7 +5,7 @@
 /* Layout: тренерская доска — вкладки сверху; «Состав»: выбор варианта, сравнение, вратари, четыре пятёрки (ЛН·Ц·ПН над ЛЗ·ПЗ), запас, народный состав; «Соперник», «Форма», «Спецбригады», «Игроки» — отдельные вкладки */
 :root{
   --bg:#e9f4f1; --surface:rgba(246,255,250,.64); --sunk:rgba(232,250,240,.7); --ink:#0b2a22; --muted:#4b6b62; --line:rgba(11,42,34,.11);
-  --accent:#00843d; --accent-ink:#ffffff; --sy:#00843d; --sy-soft:rgba(0,132,61,.12); --gold:#9a6f17; --bad:#c0392b; --good:#0f8a57; --red:#e0233a; --red-ink:#ffffff;
+  --accent:#00843d; --accent-ink:#ffffff; --sy:#00843d; --sy-soft:rgba(0,132,61,.12); --gold:#9a6f17; --bad:#c0392b; --good:#0f8a57; --red:#e0233a; --red-ink:#ffffff; --opp:#4f7cc4;
   --glass-b:rgba(255,255,255,.78); --glass-hi:rgba(255,255,255,.95); --glass-sh:0 10px 30px rgba(0,60,40,.10); --sheet:rgba(247,252,250,.9); --solid:#f4faf8;
   --page:radial-gradient(1200px 700px at 0% -10%,#7fe0b4 0%,transparent 60%),radial-gradient(900px 700px at 110% 10%,#b6ecd2 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#9fe3c1 0%,transparent 60%),#e3f3ec;
   --display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",system-ui,sans-serif;
@@ -13,17 +13,17 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#060b0a; --surface:rgba(32,40,37,.55); --sunk:rgba(255,255,255,.07); --ink:#eef5f2; --muted:#9db4ad; --line:rgba(255,255,255,.10);
-  --accent:#2fd36f; --accent-ink:#03140a; --sy:#1fb560; --sy-soft:rgba(47,211,111,.14); --gold:#ffd60a; --bad:#ff6b5e; --good:#30d158; --red:#ff453a; --red-ink:#ffffff;
+  --accent:#2fd36f; --accent-ink:#03140a; --sy:#1fb560; --sy-soft:rgba(47,211,111,.14); --gold:#ffd60a; --bad:#ff6b5e; --good:#30d158; --red:#ff453a; --red-ink:#ffffff; --opp:#6f9fe6;
   --glass-b:rgba(255,255,255,.12); --glass-hi:rgba(255,255,255,.16); --glass-sh:0 12px 34px rgba(0,0,0,.45); --sheet:rgba(14,20,18,.92); --solid:#0d1412;
   --page:radial-gradient(1100px 700px at 0% -10%,#0d6b47 0%,transparent 60%),radial-gradient(900px 700px at 110% 5%,#0a4a35 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#0b5a3d 0%,transparent 60%),#040a07; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#060b0a; --surface:rgba(32,40,37,.55); --sunk:rgba(255,255,255,.07); --ink:#eef5f2; --muted:#9db4ad; --line:rgba(255,255,255,.10);
-  --accent:#2fd36f; --accent-ink:#03140a; --sy:#1fb560; --sy-soft:rgba(47,211,111,.14); --gold:#ffd60a; --bad:#ff6b5e; --good:#30d158; --red:#ff453a; --red-ink:#ffffff;
+  --accent:#2fd36f; --accent-ink:#03140a; --sy:#1fb560; --sy-soft:rgba(47,211,111,.14); --gold:#ffd60a; --bad:#ff6b5e; --good:#30d158; --red:#ff453a; --red-ink:#ffffff; --opp:#6f9fe6;
   --glass-b:rgba(255,255,255,.12); --glass-hi:rgba(255,255,255,.16); --glass-sh:0 12px 34px rgba(0,0,0,.45); --sheet:rgba(14,20,18,.92); --solid:#0d1412;
   --page:radial-gradient(1100px 700px at 0% -10%,#0d6b47 0%,transparent 60%),radial-gradient(900px 700px at 110% 5%,#0a4a35 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#0b5a3d 0%,transparent 60%),#040a07; color-scheme:dark}
 :root[data-zt="light"]{
   --bg:#e9f4f1; --surface:rgba(246,255,250,.64); --sunk:rgba(232,250,240,.7); --ink:#0b2a22; --muted:#4b6b62; --line:rgba(11,42,34,.11);
-  --accent:#00843d; --accent-ink:#ffffff; --sy:#00843d; --sy-soft:rgba(0,132,61,.12); --gold:#9a6f17; --bad:#c0392b; --good:#0f8a57; --red:#e0233a; --red-ink:#ffffff;
+  --accent:#00843d; --accent-ink:#ffffff; --sy:#00843d; --sy-soft:rgba(0,132,61,.12); --gold:#9a6f17; --bad:#c0392b; --good:#0f8a57; --red:#e0233a; --red-ink:#ffffff; --opp:#4f7cc4;
   --glass-b:rgba(255,255,255,.78); --glass-hi:rgba(255,255,255,.95); --glass-sh:0 10px 30px rgba(0,60,40,.10); --sheet:rgba(247,252,250,.9); --solid:#f4faf8;
   --page:radial-gradient(1200px 700px at 0% -10%,#7fe0b4 0%,transparent 60%),radial-gradient(900px 700px at 110% 10%,#b6ecd2 0%,transparent 55%),radial-gradient(900px 700px at 50% 115%,#9fe3c1 0%,transparent 60%),#e3f3ec; color-scheme:light}
 :root[data-zt="dark"]{
@@ -158,6 +158,11 @@ select,input[type=text]{font:500 14px var(--body);padding:8px 10px;border-radius
 .trk-row b{font-variant-numeric:tabular-nums;text-align:right}
 .trk-row small{grid-column:1/-1;color:var(--muted);font-size:12px}
 .bar{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.vshead{display:flex;justify-content:space-between;gap:8px;font-size:14px;margin:10px 0 4px}.vshead span{font-size:12px;color:var(--muted)}
+.vsrow{display:grid;grid-template-columns:52px 1fr 52px;gap:4px 8px;align-items:center;margin:8px 0;font-variant-numeric:tabular-nums}
+.vsrow b{font-size:15px}.vsrow b:last-child{text-align:right}.vsrow b.good{color:var(--good)}
+.vsl{grid-column:1/-1;text-align:center;font-size:12px;color:var(--muted);margin-bottom:-2px}
+.vsbar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--sunk)}.vsbar i:first-child{background:var(--accent)}.vsbar i:last-child{flex:1;background:var(--opp)}
 .bar i{display:block;height:100%;background:var(--accent)}
 .vs{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:6px 10px;align-items:center;font-variant-numeric:tabular-nums}
 .vs .lbl{font-size:12px;color:var(--muted);text-align:center}
@@ -1511,6 +1516,57 @@ function virtualMatch(lS,lO,oppName){
   return{ev,sa,sb,res,gk:lu.g[0]}
 }
 const fmtT=t=>{const m=Math.floor(t),s=Math.floor((t-m)*60);return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`};
+// «Мы — они»: Салават против соперника по протоколам всех матчей лиги (LGM, khl.ru), переключатель сезон / 10 / 5
+let vsN=0;
+function teamLog(name){
+  if(typeof LGM==="undefined"||!LGM.g)return [];
+  const ix=Object.fromEntries(LGM.c.map((k,i)=>[k,i]));
+  return LGM.g.filter(r=>r[ix.h]===name||r[ix.a]===name).map(r=>{
+    const h=r[ix.h]===name,s=h?"h":"a",o=h?"a":"h",v=k=>r[ix[s+k]],w=k=>r[ix[o+k]];
+    const gf=v("s"),ga=w("s"),x=r[ix.x],fg=r[ix.fg];
+    return {d:r[ix.d],opp:h?r[ix.a]:r[ix.h],home:h,gf,ga,x,first:fg?(fg===(h?1:2)?1:-1):0,
+      p3:[v("p3"),w("p3")],sf:v("sh"),sa:w("sh"),ppo:v("ppo"),ppg:v("ppg"),pko:w("ppo"),ppga:w("ppg"),pim:v("pim"),blk:v("blk"),hit:v("hit"),en:v("en"),ena:w("en"),
+      sog:x==="Б"&&gf>ga?1:0,soa:x==="Б"&&ga>gf?1:0};
+  });
+}
+function teamAgg(log){
+  const n=log.length,S=k=>log.reduce((a,g)=>a+g[k],0);if(!n)return null;
+  const win=log.filter(g=>g.gf>g.ga).length,otl=log.filter(g=>g.gf<g.ga&&g.x).length;
+  const fst=log.filter(g=>g.first===1),fstA=log.filter(g=>g.first===-1);
+  const sf=S("sf"),sa=S("sa");
+  return {n,pts:(2*win+otl)/n,gf:S("gf")/n,ga:S("ga")/n,sf:sf/n,sa:sa/n,shp:sf?(S("gf")-S("sog"))/sf*100:0,
+    sv:sa?(1-(S("ga")-S("ena")-S("soa"))/sa)*100:0,pp:S("ppo")?S("ppg")/S("ppo")*100:0,pk:S("pko")?(1-S("ppga")/S("pko"))*100:0,
+    pim:S("pim")/n,blk:S("blk")/n,hit:S("hit")/n,first:fst.length/n*100,firstW:fst.length?fst.filter(g=>g.gf>g.ga).length:0,firstN:fst.length,
+    backW:fstA.length?fstA.filter(g=>g.gf>g.ga).length:0,backN:fstA.length,p3:S("p3")===0?0:log.reduce((a,g)=>a+g.p3[0]-g.p3[1],0)};
+}
+function vsBlock(opp){
+  const LU=teamLog("Салават Юлаев"),LO=teamLog(opp);if(!LU.length||!LO.length)return "";
+  const cut=l=>vsN?l.slice(-vsN):l,U=teamAgg(cut(LU)),O=teamAgg(cut(LO));
+  const fo=typeof LTS!=="undefined"&&LTS.t?[LTS.t["Салават Юлаев"],LTS.t[opp]]:null;
+  const M=[ // подпись, у нас, у них, формат, 1 — больше лучше, -1 — меньше лучше, порог заметной разницы
+   ["Очков за матч",U.pts,O.pts,f2,1,.15],["Забито за матч",U.gf,O.gf,f2,1,.3],["Пропущено за матч",U.ga,O.ga,f2,-1,.3],
+   ["Броски за матч",U.sf,O.sf,f1,1,2],["Броски соперника за матч",U.sa,O.sa,f1,-1,2],["Реализация бросков, %",U.shp,O.shp,f1,1,1],
+   ["% отражённых бросков",U.sv,O.sv,f1,1,1],["Большинство, %",U.pp,O.pp,f1,1,4],["Меньшинство, %",U.pk,O.pk,f1,1,4],
+   ["Штрафные минуты за матч",U.pim,O.pim,f1,-1,2],["Забивают первыми, % матчей",U.first,O.first,v=>Math.round(v),1,10],
+   ["Блоки за матч",U.blk,O.blk,f1,1,2],["Силовые за матч",U.hit,O.hit,f1,1,3]];
+  if(fo&&fo[0]&&fo[1]&&!vsN)M.push(["Выигранные вбрасывания, %",fo[0].fop,fo[1].fop,f1,1,2]);
+  const row=([l,a,b,fmt,dir])=>{const t=a+b||1,wa=clamp(a/t*100,4,96);const ba=dir*(a-b)>0,bb=dir*(b-a)>0;
+    return `<div class="vsrow"><span class="vsl">${l}${dir<0?" · меньше лучше":""}</span><b class="${ba?"good":""}">${fmt(a)}</b><div class="vsbar"><i style="width:${wa}%"></i><i></i></div><b class="${bb?"good":""}">${fmt(b)}</b></div>`};
+  const facts=[];
+  for(const [l,a,b,fmt,dir,thr] of M){if(Math.abs(a-b)<thr)continue;const us=dir*(a-b)>0;const u=/%/.test(l)?"%":"";facts.push(`${l.replace(/, %.*$/,"")}: ${fmt(a)}${u} у нас и ${fmt(b)}${u} у них — ${us?"лучше у нас":"лучше у них"}.`)}
+  facts.push(`Забили первыми — побед ${U.firstW} из ${U.firstN}; пропустили первыми — побед ${U.backW} из ${U.backN}.`);
+  facts.push(`${esc(opp)}: забив первыми — побед ${O.firstW} из ${O.firstN}, пропустив первыми — побед ${O.backW} из ${O.backN}.`);
+  if(U.p3<0)facts.push(`3-й период у нас в минус: ${U.p3} за ${U.n} ${pl(U.n,MATCH)}.`);
+  if(O.p3<0)facts.push(`3-й период у них в минус: ${O.p3} за ${O.n} ${pl(O.n,MATCH)}.`);
+  const h2h=LU.filter(g=>g.opp===opp).map(g=>`${dShort(g.d)} ${g.gf}:${g.ga}${g.x?" "+g.x:""}`).join(", ");
+  const btn=(v,t)=>`<button data-vsn="${v}" aria-pressed="${vsN===v}">${t}</button>`;
+  return `<div class="sec" id="vsSec"><div class="sec-head"><h2>Мы — они ${T("vs","?")}</h2><span class="eyebrow">khl.ru · ${esc(dShort(LGM.d))}</span></div>
+   <div class="seg">${btn(0,"Сезон")}${btn(10,"10 матчей")}${btn(5,"5 матчей")}</div>
+   <div class="vshead"><b style="color:var(--accent)">Салават Юлаев</b><span>${U.n} и ${O.n} ${pl(O.n,MATCH)}</span><b style="color:var(--opp)">${esc(opp)}</b></div>
+   ${M.map(row).join("")}
+   <p class="note">${h2h?`Личные встречи в сезоне: ${esc(h2h)}.`:"В этом сезоне ещё не встречались."}</p>
+   <div class="panel"><h3>Главное</h3>${facts.map(f=>`<p class="note" style="margin:4px 0">• ${f}</p>`).join("")}</div></div>`;
+}
 function renderRival(){
   const nr=nextRival();if(rivalName==null){rivalName=nr.name;rivalHome=nr.home}
   const opp=TIDX.find(x=>x.name===rivalName)||TIDX[0];const R=RIVALS.find(r=>r.name===rivalName);
@@ -1535,6 +1591,7 @@ function renderRival(){
    <div class="ctl-row"><span class="ctl-label">Считать по</span><div class="seg">${shotSeg()}</div></div>
    <p class="note">Сила Салавата считается по составу, который сейчас открыт на вкладке «Состав» (${esc(curLabel())}), и его основному вратарю.</p>
   </div>
+  ${vsBlock(opp.name)}
   <div class="grid2">
    ${side("Салават Юлаев сейчас",S.base,S.rating,S.att,S.def,`<small>состав ×${f2(S.aF)} к атаке · вратарь ${S.gk?esc(SUR(S.gk.name)):"—"} ×${f2(S.gF)} к пропущенным${S.formNote?` · ${S.formNote}`:""}</small><small>броски ${f1(S.sf)} : ${f1(S.sa)} за матч${S.wS?`, вес бросков ${Math.round(S.wS*100)}%`:""}</small>`)}
    ${side(esc(opp.name),opp,O.rating,O.att,O.def,`<small>${opp.conf} · ${opp.pts} ${pl(opp.pts,["очко","очка","очков"])} за ${opp.gp} ${pl(opp.gp,MATCH)} · ${opp.gf}:${opp.ga}</small>${O.sf?`<small>броски ${f1(O.sf)} : ${f1(O.sa)} за матч${O.wS?`, вес бросков ${Math.round(O.wS*100)}%`:""}</small>`:""}`)}
@@ -1718,6 +1775,7 @@ const TERMS={
  sog:["Броски в створ","Броски, которые долетели до вратаря или стали голом. Броски мимо ворот и заблокированные не считаются.",0],
  blk:["Блоки","Блокированные броски: игрок встал под шайбу и не дал ей долететь до ворот. Особенно важно для защитников.",0],
  hits:["Силовые приёмы","Сколько раз игрок жёстко встретил соперника корпусом в борьбе за шайбу.",0],
+ vs:["Мы — они","Салават и соперник рядом по официальным протоколам КХЛ всех матчей лиги. Полоска делится пропорционально двум числам: зелёная часть — наша, синяя — их. Зелёным выделено число той команды, у которой показатель лучше (для пропущенных, бросков соперника и штрафов лучше меньше). «10 матчей» и «5 матчей» — последние матчи каждой команды. Вбрасывания есть только за сезон. «Главное» — все заметные разницы между командами.",0],
  ppp:["Реализация большинства","Сколько численных преимуществ команда превратила в гол, в процентах. Считается по официальной статистике КХЛ: голы в большинстве ÷ число полученных большинств. В среднем по лиге около 20%.",0],
  pkp:["Нейтрализация меньшинства","Сколько раз команда отбилась в меньшинстве и не пропустила, в процентах: 100% − пропущенные в меньшинстве ÷ число меньшинств. В среднем по лиге около 80%.",0],
  po:["Плей-офф","После 68 матчей регулярки в плей-офф выходят по 8 лучших команд из 11 в каждой конференции. При равных очках выше команда, у которой больше побед в основное время.",0]
@@ -3069,6 +3127,7 @@ document.addEventListener("click",async e=>{
   const bb=e.target.closest("[data-b]");if(bb){board=bb.dataset.b;render();return}
   if(e.target.closest("[data-showpeople]")){board="people";render();const f=document.getElementById("fives");f&&f.scrollIntoView({behavior:"smooth",block:"start"});toast("На доске народный состав");return}
   const dp=e.target.closest("[data-dp]");if(dp){dpScope=dp.dataset.dp;document.querySelectorAll("#dpScope button").forEach(x=>x.setAttribute("aria-pressed",String(x===dp)));renderDPairs();return}
+  const vn=e.target.closest("[data-vsn]");if(vn){vsN=+vn.dataset.vsn;renderRival();return}
   const rv=e.target.closest("[data-rv]");if(rv){rivalName=rv.dataset.rv;rivalHome=rv.dataset.rh==="1";renderRival();return}
   const hm=e.target.closest("[data-hm]");if(hm){rivalHome=hm.dataset.hm==="1";renderRival();return}
   const uf=e.target.closest("[data-uf]");if(uf){useForm=uf.dataset.uf==="1";renderRival();return}
