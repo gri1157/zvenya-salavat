@@ -7,7 +7,7 @@ const path = require('path');
 
 const SEASON = 1436;
 const CACHE = path.join(__dirname, 'league-games.json');
-const CACHE_V = 2; // меняется, когда меняется разбор: старый кэш тогда выбрасывается и всё собирается заново
+const CACHE_V = 3; // меняется, когда меняется разбор: старый кэш тогда выбрасывается и всё собирается заново
 const NAMES = { 'Торпедо': 'Торпедо НН', 'Драконы': 'Шанхай Дрэгонс', 'ХК Сочи': 'Сочи' };
 const MON = { 'января': 1, 'февраля': 2, 'марта': 3, 'апреля': 4, 'мая': 5, 'июня': 6, 'июля': 7, 'августа': 8, 'сентября': 9, 'октября': 10, 'ноября': 11, 'декабря': 12 };
 const nm = s => NAMES[s] || s;
@@ -51,13 +51,13 @@ function compact(id, raw, fin) {
   const pair = cap => T.filter(t => t.cap === cap).slice(0, 2);
   const total = t => {
     // строки: заголовок, «первый период», цифры, «второй период», цифры, … — складываем только цифры под подписью
-    // периода или овертайма (строку «всего» не берём, иначе броски задвоятся)
+    // периода (любой, кроме «всего»/«итого»; у овертайма подпись бывает разной), строку без подписи не берём
     if (!t) return null;
     const head = t.rows[0]; const sum = head.map(() => 0); let any = false;
     const R = t.rows.slice(1);
     R.forEach((r, j) => {
       const lab = j > 0 && R[j - 1].length === 1 ? R[j - 1][0] : '';
-      if (r.length === head.length && r.every(c => /^[\d.:,-]*$/.test(c)) && /период|овертайм/i.test(lab)) { any = true; r.forEach((c, i) => { sum[i] += /:/.test(c) ? (c.split(':')[0] * 60 + +c.split(':')[1]) : n(c) }) }
+      if (r.length === head.length && r.every(c => /^[\d.:,-]*$/.test(c)) && lab && !/всего|итого/i.test(lab)) { any = true; r.forEach((c, i) => { sum[i] += /:/.test(c) ? (c.split(':')[0] * 60 + +c.split(':')[1]) : n(c) }) }
     });
     return any ? Object.fromEntries(head.map((k, i) => [k, sum[i]])) : null;
   };
@@ -141,7 +141,8 @@ async function main() {
   const dry = process.argv.includes('--dry');
   const mi = process.argv.indexOf('--max'); const MAX = mi > 0 ? +process.argv[mi + 1] : 400;
   const old = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, 'utf8')) : {};
-  const games = old.v === CACHE_V ? old.g : {};
+  // кэш версии 2: матчи в основное время разобраны верно, у матчей с овертаймом терялись броски овертайма — их собираем заново
+  const games = old.v === CACHE_V ? old.g : old.v === 2 ? Object.fromEntries(Object.entries(old.g).filter(([, g]) => !g.x)) : {};
   const { chromium } = require('playwright');
   const b = await chromium.launch();
   const p = await b.newPage({ locale: 'ru-RU', userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36', viewport: { width: 1400, height: 900 } });
