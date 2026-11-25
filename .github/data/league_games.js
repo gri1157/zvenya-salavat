@@ -7,7 +7,7 @@ const path = require('path');
 
 const SEASON = 1436;
 const CACHE = path.join(__dirname, 'league-games.json');
-const CACHE_V = 3; // меняется, когда меняется разбор: старый кэш тогда выбрасывается и всё собирается заново
+const CACHE_V = 4; // меняется, когда меняется разбор: старый кэш тогда выбрасывается и всё собирается заново
 const NAMES = { 'Торпедо': 'Торпедо НН', 'Драконы': 'Шанхай Дрэгонс', 'ХК Сочи': 'Сочи' };
 const MON = { 'января': 1, 'февраля': 2, 'марта': 3, 'апреля': 4, 'мая': 5, 'июня': 6, 'июля': 7, 'августа': 8, 'сентября': 9, 'октября': 10, 'ноября': 11, 'декабря': 12 };
 const nm = s => NAMES[s] || s;
@@ -50,15 +50,18 @@ function compact(id, raw, fin) {
   // две таблицы подряд с одной подписью: первая — хозяева, вторая — гости
   const pair = cap => T.filter(t => t.cap === cap).slice(0, 2);
   const total = t => {
-    // строки: заголовок, «первый период», цифры, «второй период», цифры, … — складываем только цифры под подписью
-    // периода (любой, кроме «всего»/«итого»; у овертайма подпись бывает разной), строку без подписи не берём
+    // строки: заголовок, «первый период», цифры, …, «Всего», цифры. Овертайма отдельной строкой нет — он есть только
+    // во «Всего», поэтому берём строку «Всего»; если её нет — складываем периоды
     if (!t) return null;
-    const head = t.rows[0]; const sum = head.map(() => 0); let any = false;
-    const R = t.rows.slice(1);
-    R.forEach((r, j) => {
-      const lab = j > 0 && R[j - 1].length === 1 ? R[j - 1][0] : '';
-      if (r.length === head.length && r.every(c => /^[\d.:,-]*$/.test(c)) && lab && !/всего|итого/i.test(lab)) { any = true; r.forEach((c, i) => { sum[i] += /:/.test(c) ? (c.split(':')[0] * 60 + +c.split(':')[1]) : n(c) }) }
-    });
+    const head = t.rows[0]; const R = t.rows.slice(1);
+    const val = c => /:/.test(c) ? (c.split(':')[0] * 60 + +c.split(':')[1]) : n(c);
+    const ok = r => r.length === head.length && r.every(c => /^[\d.:,-]*$/.test(c));
+    const lab = j => j > 0 && R[j - 1].length === 1 ? R[j - 1][0] : '';
+    const tj = R.findIndex((r, j) => ok(r) && /всего|итого/i.test(lab(j)));
+    let sum = null;
+    if (tj >= 0) sum = R[tj].map(val);
+    else R.forEach((r, j) => { if (ok(r) && lab(j)) { sum = sum || head.map(() => 0); r.forEach((c, i) => { sum[i] += val(c) }) } });
+    const any = !!sum;
     return any ? Object.fromEntries(head.map((k, i) => [k, sum[i]])) : null;
   };
   const shots = pair('Броски по воротам').map(total), act = pair('Командные показатели').map(total);
@@ -141,8 +144,8 @@ async function main() {
   const dry = process.argv.includes('--dry');
   const mi = process.argv.indexOf('--max'); const MAX = mi > 0 ? +process.argv[mi + 1] : 400;
   const old = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, 'utf8')) : {};
-  // кэш версии 2: матчи в основное время разобраны верно, у матчей с овертаймом терялись броски овертайма — их собираем заново
-  const games = old.v === CACHE_V ? old.g : old.v === 2 ? Object.fromEntries(Object.entries(old.g).filter(([, g]) => !g.x)) : {};
+  // кэш версий 2–3: матчи в основное время разобраны верно, у матчей с овертаймом терялись броски овертайма — их собираем заново
+  const games = old.v === CACHE_V ? old.g : old.v === 2 || old.v === 3 ? Object.fromEntries(Object.entries(old.g).filter(([, g]) => !g.x)) : {};
   const { chromium } = require('playwright');
   const b = await chromium.launch();
   const p = await b.newPage({ locale: 'ru-RU', userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36', viewport: { width: 1400, height: 900 } });
