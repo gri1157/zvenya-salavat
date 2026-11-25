@@ -34,6 +34,7 @@ DATA = os.environ.get("ZV_DATA", "/opt/zvenya/data")
 PAGE = os.environ.get("ZV_PAGE", "/opt/zvenya/repo/index.html")
 # разбор последнего матча: готовит GitHub (.github/data/razbor_export.js) из самого приложения
 RAZBOR = os.environ.get("ZV_RAZBOR", os.path.join(os.path.dirname(PAGE), ".github", "data", "razbor.json"))
+ALERTS = os.environ.get("ZV_ALERTS", os.path.join(os.path.dirname(PAGE), ".github", "data", "alerts.json"))
 RESULTS = os.environ.get("ZV_RESULTS", os.path.join(os.path.dirname(PAGE), ".github/data/results.json"))
 PORT = int(os.environ.get("ZV_PORT", "18787"))
 GDEAD = 600  # приём прогнозов закрывается за 10 минут до начала, секунд
@@ -547,7 +548,42 @@ def reminders():
             razbor_tick(time.time())
         except Exception as e:
             print("разбор:", e, file=sys.stderr)
+        try:
+            alerts_tick(time.time())
+        except Exception as e:
+            print("тревоги:", e, file=sys.stderr)
         time.sleep(60)
+
+
+def alerts_tick(now):
+    """Новые тревоги (alerts.json готовит GitHub из приложения) — одним сообщением владельцу, с 9:00 до 22:00 по Уфе.
+    Ключ тревоги содержит дату начала серии, поэтому об одной и той же серии бот пишет один раз."""
+    if not TOKEN:
+        return False
+    try:
+        with open(ALERTS, encoding="utf8") as f:
+            a = json.load(f)
+    except (FileNotFoundError, ValueError):
+        return False
+    t = datetime.fromtimestamp(now, UFA)
+    try:
+        age = (t.date() - datetime.strptime(a.get("d") or "", "%Y-%m-%d").date()).days
+    except ValueError:
+        return False
+    if age < 0 or age > 3 or t.hour < 9 or t.hour >= 22:
+        return False
+    owner = owner_id()
+    sent = load("sent")
+    new = [x for x in a.get("items", []) if x.get("k") and x.get("text") and not sent.get("al:" + x["k"])]
+    if not owner or not new:
+        return False
+    with LOCK:
+        for x in new:
+            sent["al:" + x["k"]] = int(now)
+        save("sent")
+    tg("sendMessage", chat_id=int(owner), text="⚠ Тревоги «Звеньев Салавата»\n" + "\n".join("• " + x["text"] for x in new),
+       reply_markup=kb("Открыть «Форму»", "#form"))
+    return True
 
 
 def razbor_tick(now):
