@@ -166,6 +166,19 @@ select,input[type=text]{font:500 14px var(--body);padding:8px 10px;border-radius
 .fcbar{position:relative;height:8px;background:var(--sunk);border-radius:4px}.fcbar i{position:absolute;top:0;bottom:0;border-radius:4px}.fcbar::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;border-left:1px solid var(--muted)}
 .alert{margin:6px 0;padding:10px 12px;border-radius:10px;font-size:14px}.alert.bad{background:color-mix(in srgb,var(--bad) 14%,var(--bg));color:var(--fg)}.alert.warn{background:color-mix(in srgb,var(--gold) 16%,var(--bg))}.alert.ok{background:var(--sunk)}
 .vshead{display:flex;justify-content:space-between;gap:8px;font-size:14px;margin:10px 0 4px}.vshead span{font-size:12px;color:var(--muted)}
+.capbar{position:relative;display:block;height:8px;border-radius:4px;background:var(--sunk);margin:6px 0 5px;overflow:visible}.capbar i{display:block;height:100%;border-radius:4px;background:var(--accent)}.capbar em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);border-radius:1px}
+.twleg,.lgleg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin:6px 0}.twleg i,.lgleg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.twleg i.t{background:var(--accent)}.twleg i.s{background:var(--muted);opacity:.55}
+.twrow{display:grid;grid-template-columns:minmax(0,8.6em) minmax(0,1fr) 3.3em 2.6em;gap:4px 8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.twn{display:flex;flex-direction:column;min-width:0}.twn small{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.twb{display:flex;flex-direction:column;gap:3px;min-width:0}.twb i{display:block;height:7px;border-radius:0 4px 4px 0;min-width:2px}.twb i.t{background:var(--accent)}.twb i.s{background:var(--muted);opacity:.55}
+.twv{display:flex;flex-direction:column;text-align:right;font-size:13px}.twv small{font-size:11px;color:var(--muted)}
+.twrow>b{text-align:right;font-size:13px}.twrow>b.good{color:var(--good)}.twrow>b.bad{color:var(--bad)}
+.lgrk{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));gap:6px;margin:4px 0 8px}.lgrk span{display:flex;flex-direction:column;padding:8px 10px;border-radius:10px;background:var(--sunk);font-variant-numeric:tabular-nums}.lgrk b{font-size:17px}.lgrk small{font-size:11px;color:var(--muted)}
+.lgsc{display:block;width:100%;height:auto;margin:4px 0}.lgsc text{font-size:10px;fill:var(--muted);font-variant-numeric:tabular-nums}.lgsc .lb{font-size:12px;font-weight:700;fill:var(--ink);paint-order:stroke;stroke:var(--solid);stroke-width:3px}
+.lgsc .gl{stroke:var(--line);stroke-width:1}.lgsc .md{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:.8}.lgsc circle{cursor:pointer}.lgsc circle.o{fill:var(--muted);fill-opacity:.35;stroke:transparent;stroke-width:6}.lgsc circle.u{fill:var(--accent);stroke:var(--solid);stroke-width:1.5}.lgsc circle.me{fill:var(--ink);stroke:var(--solid);stroke-width:2}
+.lgsc circle.o:hover{fill-opacity:.9}
+.lgleg i{border-radius:50%}.lgleg i.me{background:var(--ink)}.lgleg i.u{background:var(--accent)}.lgleg i.o{background:var(--muted);opacity:.4}.lgleg i.md{width:14px;height:0;border-radius:0;border-top:1px dashed var(--muted);vertical-align:3px}
 .vsrow{display:grid;grid-template-columns:52px 1fr 52px;gap:4px 8px;align-items:center;margin:8px 0;font-variant-numeric:tabular-nums}
 .vsrow b{font-size:15px}.vsrow b:last-child{text-align:right}.vsrow b.good{color:var(--good)}
 .vsl{grid-column:1/-1;text-align:center;font-size:12px;color:var(--muted);margin-bottom:-2px}
@@ -335,7 +348,7 @@ tr.cut td{border-bottom:2px solid var(--accent)}
 .hero .lf{grid-template-columns:18px minmax(0,1fr);padding:7px 0}
 .hero .lf small{grid-column:2/-1}
 tr.me td{background:color-mix(in srgb,var(--accent) 12%,transparent);font-weight:600}
-.link button.nm{background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;font-weight:600;text-align:left;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.link button.nm,.twn button.nm{background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;font-weight:600;text-align:left;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
 .duel{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:-2px 0 6px}
 .duel span{height:6px;border-radius:3px;background:var(--sunk);display:flex;overflow:hidden}
 .duel .da{justify-content:flex-end}
@@ -1010,7 +1023,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.104.82";
+const APP_VERSION="1.105.83";
 const UPDATED={n:3,date:"25 ноября 2026",table:"25 ноября",after:"матча с Нефтехимиком (24 ноября, 5:4 ОТ)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -1844,6 +1857,9 @@ const TERMS={
  fcf:["Из чего сложился процент","Модель считает ожидаемые голы обеих команд: атака × оборона соперника × площадка (дома +6%). Атака и оборона «Салавата» — из состава на матч и вратаря, соперника — из его голов и пропущенных. Каждая строка — насколько изменился бы шанс победы, если бы этот фактор был как у средней команды лиги. Строки не складываются точно в итог, потому что факторы влияют друг на друга. «Что ещё учесть» — официальные цифры (отдых, форма, спецбригады, % отражённых), которых в модели нет.",0],
  gkform:["Форма и нагрузка вратаря","% отражённых по матчам и за 5 последних матчей (Allhockey). «В старте» — матчи, где он провёл больше всех времени в воротах. Дни отдыха — от его последнего матча до ближайшего матча команды по календарю. «Против соперника» — его матчи против ближайшего соперника в этом сезоне.",0],
  p60:["Анализ игрока","Очки и броски за 60 минут — результативность с поправкой на время: игрок с 10 минутами и игрок с 20 сравниваются честно. Место — среди игроков той же позиции «Салавата» (не меньше 8 матчей). Время в большинстве и меньшинстве — из протоколов КХЛ. Звено — по последнему составу. Графики — последние 10 матчей, каждый ряд в своём масштабе. «С кем лучше» — голы в равных составах за и против, когда оба игрока были на льду.",0],
+ cpp:["Цена очка","Сколько зарплаты пришлось на одно очко игрока. Зарплату за сезон делим на 68 матчей регулярки и умножаем на матчи, которые он сыграл, — это его заработок за сыгранное. Потом делим на очки. Меньше — выгоднее. Зарплаты — из прессы, официально КХЛ их не публикует.",0],
+ tw:["Кто тянет время на льду","Две доли у каждого игрока: сколько процентов всего времени на льду команды пришлось на него и сколько процентов зарплат. Считаются полевые «Салавата» с известной зарплатой и от 5 матчей. Время за сезон — среднее за матч × матчи. Справа разница в процентных пунктах: плюс — льда больше, чем денег; минус — наоборот, часто из-за пропущенных матчей.",0],
+ lgbg:["На фоне лиги","Места — среди всех игроков той же позиции в КХЛ, у которых 8 матчей и больше: 1-й — лучший. На графике каждая точка — игрок: вправо — больше времени на льду за матч, вверх — больше очков за 60 минут. Пунктир — середина лиги (медиана). Справа сверху — те, кто много играет и много набирает.",0],
  alerts:["Тревоги","Сигналы по официальным цифрам, когда что-то идёт не так. Пороги: нападающий 5+ матчей подряд без очков или на 2+ минуты меньше времени за 5 матчей, чем в сезоне; основной вратарь ниже .900 за 5 матчей или 6+ игр подряд в старте; 3+ поражения подряд; меньшинство за 10 матчей ниже 75% или большинство ниже 15%; удалений за 5 матчей больше, чем у соперников, на 3+; 3-й период в минус в 3 из 5 последних матчей. «Близко к порогу» — до тревоги остался шаг. О новой тревоге бот пишет владельцу в Telegram.",0],
  vs:["Мы — они","Салават и соперник рядом по официальным протоколам КХЛ всех матчей лиги. Полоска делится пропорционально двум числам: зелёная часть — наша, синяя — их. Зелёным выделено число той команды, у которой показатель лучше (для пропущенных, бросков соперника и штрафов лучше меньше). «10 матчей» и «5 матчей» — последние матчи каждой команды. Вбрасывания есть только за сезон. «Главное» — все заметные разницы между командами.",0],
  ppp:["Реализация большинства","Сколько численных преимуществ команда превратила в гол, в процентах. Считается по официальной статистике КХЛ: голы в большинстве ÷ число полученных большинств. В среднем по лиге около 20%.",0],
@@ -2393,6 +2409,8 @@ const FOREIGN=["Шелдон Ремпал","Джек Родуолд","Девин
 const normN=s=>String(s).toLowerCase().replace(/ё/g,"е").replace(/\(.*?\)/g,"").trim();
 function salOf(x){if(x.sal){const s=SALS[x.name];return s?s[0]:null}const sn=normN(x.name).split(" ").pop();const r=SALL.find(z=>z[0]===x.team&&normN(z[1])===sn);return r?r[2]:null}
 const ageOf=x=>x.sal&&AGE[x.name]?AGE[x.name]:null;
+// цена очка, млн ₽: зарплата за сыгранные игроком матчи (зарплата ÷ 68 × матчи) ÷ очки
+const cppOf=(s,x)=>s&&x&&x.gp&&x.pts?s/SEASON_N*x.gp/x.pts:null;
 const yrs=n=>`${n} ${pl(n,["год","года","лет"])}`;
 // ----- автоматические сверки данных: считаются при каждом открытии
 function selfChecks(){const C=[];const add=(n,ok,d)=>C.push({n,ok,d});
@@ -2650,13 +2668,29 @@ function renderGM(){
   // 4. зарплаты и отдача
   const salRows=[...Object.entries(SALS),...Object.entries(SAL_EXTRA).map(([n,v])=>[n,[v,"в Торосе, без матчей в КХЛ"]])].map(([n,v])=>{const x=DB.find(y=>y.sal&&y.name===n),gq=G.find(q=>q.name===n),gk=gq&&(gq.s["26"]||[]).find(r=>r[0]==="Салават Юлаев");return{n,v,x,gk}}).sort((a,b)=>b.v[0]-a.v[0]);
   const salSum=salRows.reduce((s,r)=>s+r.v[0],0),salNo=[...new Set([...P.map(p=>p.name),...G.map(g=>g.name)])].filter(n=>!salRows.some(r=>r.n===n)).length;
-  const ppm=salRows.filter(r=>r.x&&r.x.gp>=5).map(r=>r.x.pts/r.v[0]*10).sort((a,b)=>a-b),ppmMed=ppm.length?ppm[Math.floor(ppm.length/2)]:0;
-  const salT=salRows.map(({n,v,x,gk})=>{const val=x?x.pts/v[0]*10:null;const c=val==null?"":val>=ppmMed*1.4?"g":val<=ppmMed*.6?"w":"m";
+  const teamGP=(LTS.t[US]&&LTS.t[US].gp)||Math.max(...P.map(p=>RAW[p.id][3]));
+  const skK=salRows.filter(r=>r.x&&r.x.gp>=5),cppL=skK.map(r=>cppOf(r.v[0],r.x)).filter(v=>v!=null).sort((a,b)=>a-b),cppMed=cppL.length?cppL[Math.floor(cppL.length/2)]:0;
+  const teamCpp=skK.reduce((s,r)=>s+r.v[0]/SEASON_N*r.x.gp,0)/Math.max(1,skK.reduce((s,r)=>s+r.x.pts,0));
+  // ориентир: топ-50 зарплат лиги (Спорт-Экспресс), полевые от 5 матчей
+  const lgTop=SALL.map(z=>{const x=DB.find(y=>!y.sal&&y.team===z[0]&&normN(y.name).split(" ").pop()===normN(z[1]));return x&&x.gp>=5&&x.pts?{x,c:cppOf(z[2],x)}:null}).filter(Boolean).sort((a,b)=>a.c-b.c),lgMed=lgTop.length?lgTop[Math.floor(lgTop.length/2)].c:0;
+  const cppS=skK.filter(r=>r.x.pts).map(r=>({r,c:cppOf(r.v[0],r.x)})).sort((a,b)=>a.c-b.c),cBest=cppS[0],cWorst=cppS[cppS.length-1],zeroP=skK.filter(r=>!r.x.pts);
+  const capU=salSum/CAP.cap;
+  // кто тянет время на льду: доля во времени и доля в зарплатах среди полевых с известной зарплатой
+  const twT=skK.reduce((s,r)=>s+r.x.gp*r.x.toi,0)||1,twS=skK.reduce((s,r)=>s+r.v[0],0)||1;
+  const tw=skK.map(r=>{const t=r.x.gp*r.x.toi/twT,s=r.v[0]/twS;return{r,t,s,d:t-s}}).sort((a,b)=>b.t-a.t),twMax=Math.max(...tw.map(o=>Math.max(o.t,o.s)),.01);
+  const twRows=tw.map(({r,t,s,d})=>`<div class="twrow"><span class="twn"><button class="nm" data-agopen="${esc(US+"|"+r.n)}">${esc(SUR(r.n))}</button><small>${r.x.pos==="D"?"защ.":"нап."} · ${mmss(r.x.toi)} · ${r.x.gp} из ${teamGP}</small></span><span class="twb"><i class="t" style="width:${(t/twMax*100).toFixed(1)}%"></i><i class="s" style="width:${(s/twMax*100).toFixed(1)}%"></i></span><span class="twv">${f1(t*100)}%<small>${f1(s*100)}%</small></span><b class="${d>=.01?"good":d<=-.01?"bad":""}">${d>=.0005?"+":d<=-.0005?"−":""}${f1(Math.abs(d*100))}</b></div>`).join("");
+  const twUp=[...tw].sort((a,b)=>b.d-a.d).slice(0,3),twDn=[...tw].sort((a,b)=>a.d-b.d).slice(0,3).filter(o=>o.d<0);
+  const twNo=DB.filter(x=>x.sal&&x.gp>=5&&!SALS[x.name]).sort((a,b)=>b.gp*b.toi-a.gp*a.toi).slice(0,6);
+  const salT=salRows.map(({n,v,x,gk})=>{const val=x&&x.gp>=5?cppOf(v[0],x):null;const c=val==null?"":val<=cppMed*.7?"g":val>=cppMed*1.4?"w":"m";
     const sub=[x?`${x.gp} ${pl(x.gp,MATCH)}, ${mmss(x.toi)} на льду`:gk?`вратарь, ${gk[1]} ${pl(gk[1],MATCH)}`:null,v[1]||null].filter(Boolean).join(" · ");
-    return `<tr><td class="l nmc">${x||gk?`<button class="nm" data-agopen="${esc("Салават Юлаев|"+n)}">${esc(SUR(n))}</button>`:esc(SUR(n))}${INJ[n]&&!/Торос|Толпар/.test(INJ[n][0])?` <small class="bad">${esc(INJ[n][0])}</small>`:""}${sub?`<br><small>${esc(sub)}</small>`:""}</td><td><b>${v[0]}</b></td><td>${x?`${x.g}+${x.a}`:gk&&gk[4]?f1(gk[5]/gk[4]*100)+"%":"—"}</td><td>${val!=null?`${f1(val)}<br>${flagT(c,c==="g"?"выгодно":c==="w"?"дорого":"норма")}`:"—"}</td></tr>`}).join("");
+    return `<tr><td class="l nmc">${x||gk?`<button class="nm" data-agopen="${esc("Салават Юлаев|"+n)}">${esc(SUR(n))}</button>`:esc(SUR(n))}${INJ[n]&&!/Торос|Толпар/.test(INJ[n][0])?` <small class="bad">${esc(INJ[n][0])}</small>`:""}${sub?`<br><small>${esc(sub)}</small>`:""}</td><td><b>${v[0]}</b></td><td>${x?`${x.g}+${x.a}`:gk&&gk[4]?f1(gk[5]/gk[4]*100)+"%":"—"}</td><td>${val!=null?`${f1(val)}<br>${flagT(c,c==="g"?"выгодно":c==="w"?"дорого":"норма")}`:x&&x.gp>=5?`<small>нет очков</small><br>${flagT("w","дорого")}`:"—"}</td></tr>`}).join("");
   // 5. возраст и легионеры
   const luAll=[...lu.lines.flatMap(l=>[l.lw,l.c,l.rw]),...lu.pairs.flatMap(d=>[d.ld,d.rd])].filter(Boolean);const ages=luAll.map(p=>AGE[p.name]&&AGE[p.name][0]).filter(Boolean);
   const avgAge=ages.length?ages.reduce((s,a)=>s+a,0)/ages.length:0,young=luAll.filter(p=>AGE[p.name]&&AGE[p.name][0]<=22),vet=luAll.filter(p=>AGE[p.name]&&AGE[p.name][0]>=32);
+  const lnAge=a=>{const v=a.filter(Boolean).map(p=>AGE[p.name]&&AGE[p.name][0]).filter(Boolean);return v.length?v.reduce((s,y)=>s+y,0)/v.length:null};
+  const ageRows=[...lu.lines.map((l,i)=>[`${i+1}-е звено`,[l.lw,l.c,l.rw]]),...lu.pairs.map((d,i)=>[`${i+1}-я пара`,[d.ld,d.rd]])].map(([k,a])=>[k,a.filter(Boolean),lnAge(a)]).filter(r=>r[2]!=null);
+  // легионеры: спортивный регламент КХЛ, ст. 42 — в заявке на матч не больше 5, из них не больше 1 вратаря
+  const fOut=FOREIGN.filter(n=>outOn(n,nd)),fG=FOREIGN.filter(n=>G.some(g=>g.name===n)).length;
   // 6. вратари лиги
   const gl=[...LGK.map(g=>({team:LGT[g[0]],name:g[1],gp:g[2],sa:g[3],ga:g[4]})),...G.map(g=>{const r=(g.s["26"]||[]).find(x=>x[0]==="Салават Юлаев");return r?{team:"Салават Юлаев",name:g.name,gp:r[1],sa:r[4],ga:r[4]-r[5]}:null}).filter(Boolean)].filter(g=>g.gp>=8).map(g=>({...g,sv:1-g.ga/g.sa})).sort((a,b)=>b.sv-a.sv);
   const glT=gl.map((g,i)=>({g,i})).filter(({g,i})=>i<10||g.team==="Салават Юлаев").map(({g,i})=>`<tr${g.team==="Салават Юлаев"?' class="win"':""}><td>${i+1}</td>${(()=>{const sv=salOf({team:g.team,name:g.name,sal:g.team==="Салават Юлаев"});return `<td class="l nmc">${esc(g.name)}<br><small>${esc(g.team)} · ${g.sa} ${pl(g.sa,["бросок","броска","бросков"])}${sv?` · ${sv} млн`:""}</small></td>`})()}<td>${g.gp}</td><td><b>${f1(g.sv*100)}%</b></td></tr>`).join("");
@@ -2666,7 +2700,7 @@ function renderGM(){
   const ct=TEAMS.filter(t=>t[1]===conf).map(t=>S.by[t[0]]).sort((a,b)=>b.pts-a.pts);
   const cTab=ct.map((r,i)=>`<tr class="${[r.t.name===US?"win":"",i===7?"cut":""].join(" ").trim()}"><td>${i+1}</td><td class="l nmc">${esc(r.t.name)}${r.t.vs?`<br><small>${r.t.vs} ${pl(r.t.vs,MATCH)} с нами</small>`:""}</td><td>${r.t.pts}<small>/${r.t.gp}</small></td><td><b>${Math.round(r.pts)}</b></td><td>${pct(r.po)}</td></tr>`).join("");
   const remN=SEASON_N-me.t.gp,need=Math.max(0,S.cut.med-me.t.pts),needP=remN?need/(2*remN):0,nowP=me.t.gp?me.t.pts/(2*me.t.gp):0;
-  const toc=[["gm-weak","Где тонко"],["gm-farm","Фарм"],["gm-sal","Зарплаты"],["gm-age","Возраст"],["gm-gk","Вратари лиги"],["gm-buy","Кем усилить"],["gm-fc","Прогноз"],["gm-cal","Календарь"]].map(([k,l])=>`<button class="chip" data-jump="${k}">${l}</button>`).join("");
+  const toc=[["gm-weak","Где тонко"],["gm-farm","Фарм"],["gm-sal","Зарплаты"],["gm-tw","Время и деньги"],["gm-age","Возраст"],["gm-gk","Вратари лиги"],["gm-buy","Кем усилить"],["gm-fc","Прогноз"],["gm-cal","Календарь"]].map(([k,l])=>`<button class="chip" data-jump="${k}">${l}</button>`).join("");
   el.innerHTML=`
   <p class="note">Сверки данных: ${chOk} из ${CH.length} пройдено. Подробно на вкладке <a href="#method">«Как считается»</a>.</p>
   <div class="actions no-print"><button class="btn" type="button" data-regopen="1">Регламент КХЛ: поиск</button></div>
@@ -2682,18 +2716,27 @@ function renderGM(){
   <div class="sec jumpt" id="gm-sal"><div class="sec-head"><h2>Зарплаты и отдача</h2><span class="eyebrow">по данным прессы, июль–ноябрь 2026</span></div>
    <div class="grid3">
     <div class="tile"><span>Известная часть фонда</span><b>≈${salSum} млн</b><small>${salRows.length} ${pl(salRows.length,["игрок","игрока","игроков"])}${salNo?`<br><span>ещё у ${salNo} ${pl(salNo,["игрока","игроков","игроков"])} зарплата неизвестна</span>`:""}</small></div>
-    <div class="tile"><span>Потолок</span><b>${CAP.cap} млн</b><small>свободно не более ≈${CAP.cap-salSum} млн: зарплаты известны не у всех</small></div>
-    <div class="tile"><span>Минимум фонда</span><b>${CAP.floor} млн</b><small>${salSum>=CAP.floor?"известная часть выше":"известная часть ниже, остальные зарплаты не публиковались"}</small></div>
+    <div class="tile"><span>Загрузка потолка</span><b>${Math.round(capU*100)}%</b><small><span class="capbar" role="img" aria-label="Известно ${salSum} из ${CAP.cap} млн, минимум фонда ${CAP.floor} млн"><i style="width:${Math.min(100,capU*100).toFixed(1)}%"></i><em style="left:${(CAP.floor/CAP.cap*100).toFixed(1)}%"></em></span>потолок ${CAP.cap} млн, свободно не больше ≈${Math.max(0,CAP.cap-salSum)}; черта — минимум ${CAP.floor} млн</small></div>
+    <div class="tile"><span>${T("cpp","Цена очка")} в команде</span><b>${f1(teamCpp)} млн</b><small>у топ-50 зарплат лиги — ${f1(lgMed)} млн${lgTop.length?` (${lgTop.length} ${pl(lgTop.length,["игрок","игрока","игроков"])})`:""}</small></div>
+    ${cBest?`<div class="tile"><span>Самое дешёвое очко</span><b>${esc(SUR(cBest.r.n))}</b><small>${f1(cBest.c)} млн за очко · дороже всех ${esc(SUR(cWorst.r.n))}, ${f1(cWorst.c)} млн${zeroP.length?`; без очков: ${esc(zeroP.map(r=>SUR(r.n)).join(", "))}`:""}</small></div>`:""}
    </div>
-   <div class="tablewrap"><table class="tight"><thead><tr><th class="l">Игрок</th><th>Млн</th><th>Очки</th><th>На 10 млн</th></tr></thead><tbody>${salT}</tbody></table></div>
+   <div class="tablewrap"><table class="tight"><thead><tr><th class="l">Игрок</th><th>Млн</th><th>Очки</th><th>Цена очка, млн</th></tr></thead><tbody>${salT}</tbody></table></div>
    <div class="actions no-print"><button class="btn" type="button" data-regopen="1">Регламент КХЛ: поиск</button></div>
-   <p class="note">Зарплата за сезон без бонусов, данные Спорт-Экспресса в июле. «На 10 млн» — сколько очков игрок приносит на каждые 10 млн зарплаты, у вратарей вместо очков % отражённых. Зарплаты Маджо, Загребина, Жаровского, Кузнецова и ещё части игроков в прессе не называли. «Выгодно» и «дорого» — сравнение с серединой команды по очкам на 10 млн. Потолок и минимум: регламент КХЛ на 2026/27.</p></div>
+   <p class="note">Зарплата за сезон без бонусов, данные Спорт-Экспресса в июле. Цена очка — сколько зарплаты пришлось на одно очко в сыгранных игроком матчах: зарплата ÷ 68 × матчи ÷ очки. Меньше — выгоднее; считаем от 5 матчей, у вратарей вместо очков % отражённых. «Выгодно» и «дорого» — сравнение с серединой команды (${f1(cppMed)} млн). Зарплаты Маджо, Загребина, Жаровского, Кузнецова и ещё части игроков в прессе не называли. Потолок и минимум: регламент КХЛ на 2026/27.</p>
+   <h3 class="jumpt" id="gm-tw">Кто тянет время на льду ${T("tw","?")}</h3>
+   <div class="twleg"><span><i class="t"></i>доля времени на льду</span><span><i class="s"></i>доля зарплаты</span><span>справа — разница, п.п.</span></div>
+   <div>${twRows}</div>
+   <p class="note">${twUp.length?`Больше льда, чем денег: ${twUp.map(o=>`${esc(SUR(o.r.n))} +${f1(o.d*100)}`).join(", ")}.`:""} ${twDn.length?`Больше денег, чем льда: ${twDn.map(o=>`${esc(SUR(o.r.n))} −${f1(Math.abs(o.d*100))}${o.r.x.gp<teamGP-3?` (${o.r.x.gp} из ${teamGP} матчей)`:""}`).join(", ")}.`:""} Считаются ${tw.length} полевых с известной зарплатой и от 5 матчей.${twNo.length?` Без зарплаты в прессе, но много играют: ${twNo.map(x=>`${esc(SUR(x.name))} ${mmss(x.toi)}`).join(", ")}.`:""}</p></div>
   <div class="grid2">
    <div class="panel jumpt" id="gm-age"><h2>Возраст и легионеры</h2><div class="links">
     <div class="link"><span>Средний возраст состава модели</span><b>${f1(avgAge)}</b></div>
     <div class="link"><span>22 года и младше</span><b>${young.length}</b></div>
     <div class="link"><span>32 года и старше</span><b>${vet.length}</b></div>
-    <div class="link"><span>Легионеров в клубе</span><b>${FOREIGN.length}</b></div></div>
+    <div class="link"><span>Легионеров в клубе</span><b>${FOREIGN.length}</b></div>
+    <div class="link"><span>Легионеров в строю, лимит на матч 5</span><b>${FOREIGN.length-fOut.length}</b></div>
+    <div class="link"><span>Вратарей-легионеров, лимит 1</span><b>${fG}</b></div></div>
+    <p class="note">${FOREIGN.length<=5?`В одну заявку проходят все ${FOREIGN.length} легионеров.`:`В одну заявку проходят только 5 из ${FOREIGN.length}.`}${fOut.length?` Сейчас вне игры: ${esc(fOut.map(SUR).join(", "))}.`:""}${FOREIGN.length>=5?" Шестой легионер сможет сыграть, только если кого-то из них нет в заявке.":""} Спортивный регламент КХЛ, ст. 42: не больше 5 легионеров в заявке на матч, из них не больше 1 вратаря.</p>
+    ${ageRows.length?`<h3>Возраст по звеньям</h3><div class="links">${ageRows.map(([k,a,v])=>`<div class="link"><span>${k}<small> · ${esc(a.map(p=>SUR(p.name)).join(", "))}</small></span><b>${f1(v)}</b></div>`).join("")}</div>`:""}
     <p class="note">Молодые: ${young.map(p=>`${esc(SUR(p.name))} ${AGE[p.name][0]}`).join(", ")||"—"}. Ветераны: ${vet.map(p=>`${esc(SUR(p.name))} ${AGE[p.name][0]}`).join(", ")||"—"}. Легионеры: ${FOREIGN.map(n=>esc(SUR(n))+(INJ[n]?" (травма)":"")).join(", ")}. Возраст по Sports.ru.</p></div>
    <div class="panel jumpt" id="gm-gk"><h2>Вратари лиги</h2><div class="tablewrap"><table class="tight"><thead><tr><th>#</th><th class="l">Вратарь</th><th>М</th><th>%</th></tr></thead><tbody>${glT}</tbody></table></div><p class="note">Вратари от 8 матчей, ${gl.length} человек. % отражённых без пустых ворот. Под фамилией: клуб, сколько бросков отразил и пропустил всего, зарплата, если вратарь в топ-50 Спорт-Экспресса.</p></div>
   </div>
@@ -2876,18 +2919,46 @@ function renderAgent(){
     <div class="tile"><span>Время на льду</span><b>${mmss(x.toi)}</b><small>за матч</small></div>
     <div class="tile"><span>Очки за 60 минут</span><b>${f2(x.p60)}</b><small>броски ${f1(x.s60)} за 60</small></div>
     <div class="tile"><span>Плюс-минус</span><b>${pmS(x.pm)}</b><small>штраф ${x.pim} мин</small></div>
-    ${sal?`<div class="tile"><span>Зарплата</span><b>${sal} млн</b><small>${f1(x.pts/sal*10)} очка на 10 млн${x.sal&&SALS[x.name]&&SALS[x.name][1]?` · ${esc(SALS[x.name][1])}`:""}</small></div>`:`<div class="tile"><span>Зарплата</span><b>—</b><small>нет в открытых данных</small></div>`}
+    ${sal?`<div class="tile"><span>Зарплата</span><b>${sal} млн</b><small>${cppOf(sal,x)?`цена очка ${f1(cppOf(sal,x))} млн`:"очков пока нет"}${x.sal&&SALS[x.name]&&SALS[x.name][1]?` · ${esc(SALS[x.name][1])}`:""}</small></div>`:`<div class="tile"><span>Зарплата</span><b>—</b><small>нет в открытых данных</small></div>`}
    </div>
    <div class="actions no-print"><button class="btn${watched?"":" pri"}" data-watch="${esc(x.key)}">${watched?"Убрать из моих":"Следить за игроком"}</button><button class="btn" data-agexp="png">Картинка</button><button class="btn" data-agexp="pdf">PDF для клуба</button><button class="btn" data-agcopy="1">Скопировать текстом</button><button class="btn" type="button" data-regopen="1">Регламент КХЛ: поиск</button></div>
    <div id="agOut" class="no-print"></div>
   </div>
   <div class="panel"><div class="sec-head"><h2>Место среди ${posPl(x.pos)} лиги</h2><span class="eyebrow">${pool.length} игроков, от 8 матчей</span></div><div>${bars}</div>
    <p class="note">Процент: скольких ${posPl(x.pos)} лиги игрок обходит по этой цифре. 50% — середина, 90% — среди лучших.</p></div>
+  ${lgBack(x,pool)}
   <div class="panel"><h2>Сигналы</h2>${sig.length?`<div>${sig.map(([c,t])=>`<div class="lf gmw"><span class="t">${esc(t)}</span><b></b><span>${flagT(c,c==="g"?"плюс":c==="m"?"следить":"тревога")}</span></div>`).join("")}</div>`:`<p class="note">Сигналы по матчам есть только у игроков Салавата: для них есть протоколы по каждой игре.</p>`}</div>
   <div class="panel"><h2>Похожие игроки в лиге</h2><div>${sims}</div><p class="note">Похожесть по очкам и броскам за 60 минут, времени на льду, плюс-минусу и штрафу. Это рыночные аналоги для разговора о контракте.</p>
    <p class="note">${mkS.length?`Рынок: среди 15 самых похожих зарплата известна у ${mkS.length}: от ${mkS[0]} до ${mkS[mkS.length-1]} млн (${mk.map(z=>`${esc(SUR(z.o.x.name))} ${z.s}`).join(", ")}).`:"Рынок: у 15 самых похожих игроков зарплаты в прессе не публиковались (в открытом доступе только топ-50 лиги)."}</p></div>
   ${mon.length?`<div class="panel"><h2>По месяцам</h2><div class="tablewrap"><table><thead><tr><th class="l">Месяц</th><th>М</th><th>Голы</th><th>Очки</th><th>ИВ</th><th>+/-</th></tr></thead><tbody>${mon.map(([k,m])=>`<tr><td class="l">${MONN[+k.slice(5,7)-1]}</td><td>${m.gp}</td><td>${m.g}</td><td><b>${m.pts}</b></td><td>${m.tn?mmss(m.toi/m.tn):"—"}</td><td>${m.tn?pmS(m.pm):"—"}</td></tr>`).join("")}</tbody></table></div><p class="note">Время и плюс-минус по протоколам Allhockey.</p></div>`:""}
   <p class="note">Данные Allhockey (другие клубы) и Sports.ru со Спорт-Экспрессом (Салават) на ${esc(UPDATED.date)}. Зарплаты в КХЛ официально не публикуются.</p>`;
+}
+// ----- агент: игрок на фоне лиги — места, точечный график «время на льду × очки за 60», роль в своей команде
+function lgBack(x,pool){
+  const N=pool.length+(pool.some(y=>y.key===x.key)?0:1),rk=k=>1+pool.filter(y=>y.key!==x.key&&y[k]>x[k]).length;
+  const tm=leagueDB().filter(y=>y.team===x.team&&y.pos===x.pos&&y.gp>=5),trk=k=>1+tm.filter(y=>y.key!==x.key&&y[k]>x[k]).length;
+  const med=a=>{const v=[...a].sort((p,q)=>p-q);return v.length?v[Math.floor(v.length/2)]:0};
+  const mx=med(pool.map(y=>y.toi)),my=med(pool.map(y=>y.p60)),hiT=x.toi>=mx,hiP=x.p60>=my;
+  const quad=hiT&&hiP?"много играет и много набирает":hiT?"много играет, но набирает меньше середины лиги":hiP?"играет меньше середины лиги, но набирает больше":"ниже середины лиги и по времени, и по очкам";
+  const W=340,H=240,L=30,R=10,TP=20,B=30,xs=pool.map(y=>y.toi/60).concat(x.toi/60),ys=pool.map(y=>y.p60).concat(x.p60);
+  const x0=Math.floor(Math.min(...xs)),x1=Math.ceil(Math.max(...xs)),ymax=Math.max(...ys,.5),ys1=ymax>3?1:.5,y1=Math.ceil(ymax/ys1)*ys1;
+  const sx=v=>+(L+(v-x0)/((x1-x0)||1)*(W-L-R)).toFixed(1),sy=v=>+(TP+(1-v/y1)*(H-TP-B)).toFixed(1);
+  let g="";
+  for(let v=0;v<=y1+1e-9;v+=ys1)g+=`<line x1="${L}" x2="${W-R}" y1="${sy(v)}" y2="${sy(v)}" class="gl"/><text x="${L-5}" y="${sy(v)+3.5}" text-anchor="end">${String(+v.toFixed(1)).replace(".",",")}</text>`;
+  const xst=(x1-x0)>12?4:2;for(let v=Math.ceil(x0/xst)*xst;v<=x1;v+=xst)g+=`<text x="${sx(v)}" y="${H-B+14}" text-anchor="middle">${v}</text>`;
+  g+=`<text x="${L}" y="11">очки за 60 минут</text><text x="${W-R}" y="${H-3}" text-anchor="end">время на льду за матч, мин</text>`;
+  g+=`<line x1="${sx(mx/60)}" x2="${sx(mx/60)}" y1="${TP}" y2="${H-B}" class="md"/><line x1="${L}" x2="${W-R}" y1="${sy(my)}" y2="${sy(my)}" class="md"/>`;
+  const dot=(y,c,r)=>`<circle cx="${sx(y.toi/60)}" cy="${sy(y.p60)}" r="${r}" class="${c}" data-agopen="${esc(y.key)}"><title>${esc(y.name)} · ${esc(y.team)}: ${mmss(y.toi)} на льду, ${f2(y.p60)} очка за 60</title></circle>`;
+  g+=pool.filter(y=>y.key!==x.key&&!y.sal).map(y=>dot(y,"o",3.5)).join("")+pool.filter(y=>y.key!==x.key&&y.sal).map(y=>dot(y,"u",4.5)).join("")+dot(x,"me",6.5);
+  const lx=sx(x.toi/60),ly=sy(x.p60),rt=lx>W-100;
+  g+=`<text x="${rt?lx-10:lx+10}" y="${ly<TP+14?ly+16:ly-9}" text-anchor="${rt?"end":"start"}" class="lb">${esc(SUR(x.name))}</text>`;
+  const ag=ageOf(x),sa=P.filter(p=>p.pos===x.pos&&AGE[p.name]&&AGE[p.name][0]&&RAW[p.id][3]>=5).map(p=>AGE[p.name][0]),saM=sa.length?sa.reduce((q,v)=>q+v,0)/sa.length:0;
+  const chips=[["p60","очки за 60",f2],["toi","время на льду",mmss],["pts","очки",v=>v],["s60","броски за 60",f1]].map(([k,l,fm])=>`<span><b>${rk(k)}-й</b><small>из ${N} · ${l}: ${fm(x[k])}</small></span>`).join("");
+  return `<div class="panel"><div class="sec-head"><h2>На фоне лиги ${T("lgbg","?")}</h2><span class="eyebrow">${posPl(x.pos)} от 8 матчей</span></div>
+   <div class="lgrk">${chips}</div>
+   <svg class="lgsc" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(SUR(x.name))}: ${mmss(x.toi)} на льду и ${f2(x.p60)} очка за 60 минут среди ${N} ${posPl(x.pos)} лиги">${g}</svg>
+   <div class="lgleg"><span><i class="me"></i>${esc(SUR(x.name))}</span><span><i class="u"></i>«Салават»</span><span><i class="o"></i>другие клубы</span><span><i class="md"></i>середина лиги</span></div>
+   <p class="note">${esc(SUR(x.name))}: ${quad} (середина — ${mmss(mx)} и ${f2(my)} очка за 60). ${tm.length>1?`В своей команде — ${trk("toi")}-й по времени и ${trk("pts")}-й по очкам из ${tm.length} ${posPl(x.pos)} от 5 матчей.`:""}${ag&&ag[0]?` Возраст ${yrs(ag[0])}${saM?`, средний у ${posPl(x.pos)} «Салавата» — ${f1(saM)}`:""}.`:""} Нажми на точку, чтобы открыть игрока.</p></div>`;
 }
 // ----- карточка игрока картинкой и PDF: лист A4 (1240×1754, 150 точек на дюйм)
 function agentCard(x){
@@ -3403,7 +3474,7 @@ document.addEventListener("click",async e=>{
   if(e.target.closest("#playVM")){const opp=TIDX.find(x=>x.name===rivalName);const S=salavatNow();const h=rivalHome?HOME:1/HOME;const O=oppStr(opp);VMATCH=virtualMatch(LEAGUE_G*S.att*O.def*h,LEAGUE_G*O.att*S.def/h,rivalName);renderRival();const el=document.querySelector("#rivalBody .panel:nth-of-type(3)");return}
   const gp_=e.target.closest("[data-gpos]");if(gp_){gmPos=gp_.dataset.gpos;gmRef=null;renderGM();return}
   const gmd=e.target.closest("[data-gmode]");if(gmd){gmMode=gmd.dataset.gmode;renderGM();return}
-  const ago=e.target.closest("[data-agopen]");if(ago){agSel=ago.dataset.agopen;agQ=null;if(UI==="pro"&&ROLE!=="agent"){setRole("agent",true);toast("Карточка открыта в разделе «Агент»")}else if(location.hash==="#agent")renderAgent();else location.hash="agent";window.scrollTo(0,0);return}
+  const ago=e.target.closest("[data-agopen]");if(ago){agSel=ago.dataset.agopen;agQ=null;if(location.hash==="#agent")renderAgent();else{location.hash="agent";if(UI==="pro")toast("Карточка открыта: Клуб · Агент")}window.scrollTo(0,0);return}
   const wt=e.target.closest("[data-watch]");if(wt){const k=wt.dataset.watch;WATCH=WATCH.includes(k)?WATCH.filter(x=>x!==k):[...WATCH,k];saveWatch();renderAgent();toast(WATCH.includes(k)?"Игрок добавлен в «Мои игроки»":"Игрок убран из «Моих игроков»");return}
   const agc=e.target.closest("[data-agcopy]");if(agc){const x=leagueDB().find(y=>y.key===agSel);if(x){const t=agText(x);Promise.resolve().then(()=>navigator.clipboard.writeText(t)).then(()=>toast("Карточка скопирована")).catch(()=>copySheet(t,"Карточка игрока"))}return}
   const shm=e.target.closest("[data-shm]");if(shm){shotMode=shm.dataset.shm;save();renderRival();renderLazy();return}
