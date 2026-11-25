@@ -135,7 +135,7 @@ async function main() {
   const b = await chromium.launch();
   const p = await b.newPage({ locale: 'ru-RU', userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36', viewport: { width: 1400, height: 900 } });
   await p.goto(`https://www.khl.ru/calendar/${SEASON}/00/`, { waitUntil: 'networkidle', timeout: 90000 });
-  await p.waitForSelector('li.match-card', { timeout: 60000 });
+  await p.waitForSelector('li.match-card', { state: 'attached', timeout: 60000 });
   const cards = await p.evaluate(() => [...document.querySelectorAll('li.match-card')].map(c => ({ href: (c.querySelector('a[href*="/game/"]') || {}).getAttribute?.('href') || '', t: c.innerText.replace(/\s+/g, ' ') })));
   const fin = {};
   for (const c of cards) { const id = (c.href.match(/\/game\/\d+\/(\d+)/) || [])[1], sc = c.t.match(/(\d+) — (\d+)/); if (id && sc) fin[id] = [+sc[1], +sc[2]] }
@@ -148,7 +148,7 @@ async function main() {
     for (let t = 0; t < 3 && !ok; t++) {
       try {
         await p.goto(`https://www.khl.ru/game/${SEASON}/${id}/protocol/`, { waitUntil: 'networkidle', timeout: 60000 });
-        await p.waitForSelector('table', { timeout: 30000 });
+        await p.waitForSelector('table', { state: 'attached', timeout: 30000 });
         await p.waitForTimeout(800);
         const g = compact(id, await p.evaluate(pageTables), fin[id]);
         const bad = check(g);
