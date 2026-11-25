@@ -389,8 +389,9 @@ def mgr_points(pk, us, them):
     return pts, why
 
 
-def final_whistle(d, g, us, them, suffix, scorers):
-    """Матч окончен: итог всем, предварительные очки участникам, голосование за лучшего игрока."""
+def final_whistle(d, g, us, them, suffix, scorers, glist=""):
+    """Матч окончен: итог всем (со списком шайб — кто забил и кто отдал), предварительные очки участникам,
+    голосование за лучшего игрока."""
     line = score_line(g, us, them) + (f" ({suffix})" if suffix else "")
     mood = "Победа «Салавата»! 🎉" if us > them else "Поражение. Играем дальше."
     names = load("names")
@@ -402,7 +403,7 @@ def final_whistle(d, g, us, them, suffix, scorers):
             scored.append((uid, pk, pts, why))
     scored.sort(key=lambda r: -r[2])
     top = "\n".join(f"{'🥇🥈🥉'[i]} {names.get(u, '') or 'Болельщик'} — {p} {ru_pts(p)}" for i, (u, _, p, _) in enumerate(scored[:3]) if p > 0)
-    text = f"🏁 Матч окончен!\n{line}\n{mood}"
+    text = f"🏁 Матч окончен!\n{line}\n{mood}" + (f"\n\n{glist}" if glist else "")
     push(text, groups=False)
     group_push(text + (f"\n\nЛучшие прогнозы на счёт:\n{top}" if top else ""), reply_markup=kb_url("🏆 Рейтинг и прогнозы"))
     for rank, (uid, pk, pts, why) in enumerate(scored, 1):
@@ -986,10 +987,11 @@ def goal_text(g, head, us, them, who, t, ast):
 
 def assists_tick(d, g, st, now):
     """Голы, у которых ещё нет передач: раз в 20 секунд спрашиваем Sports.ru и дописываем передачи в уже
-    отправленные сообщения (сам гол уходит сразу, не дожидаясь их). Через 10 минут перестаём искать."""
+    отправленные сообщения (сам гол уходит сразу, не дожидаясь их). Sports.ru иногда пишет о голе с опозданием,
+    поэтому ищем 40 минут. Найденные передачи запоминаем — они попадут в итог матча."""
     keep = []
     for p in st.get("pend", []):
-        if now - p["t0"] > 600:
+        if now - p["t0"] > 2400:
             continue
         if now - p.get("nt", 0) < 20:
             keep.append(p)
@@ -999,11 +1001,38 @@ def assists_tick(d, g, st, now):
         if not ast:
             keep.append(p)
             continue
+        st.setdefault("ast", {})[f"{p['t']}|{p['who']}"] = ast
         text = goal_text(g, p["head"], p["us"], p["them"], p["who"], p["t"], ast)
         for cid, mid in p["msgs"]:
             tg("editMessageText", chat_id=cid, message_id=mid, text=text)
             time.sleep(0.03)
     st["pend"] = keep
+
+
+def goals_list(d, g, st, rows):
+    """Все шайбы матча для итогового сообщения: счёт, автор, передачи, время. Передачи — те, что уже нашли во время
+    матча; для наших шайб без передач ещё раз смотрим трансляцию Sports.ru."""
+    if not rows:
+        return ""
+    known = dict(st.get("ast", {}))
+    need = [r for r in rows if r[3] and f"{r[1]}|{r[2]}" not in known]
+    if need:
+        try:
+            mid = sr_match_id(d, g["o"])
+            sr = parse_goals(fetch(f"{SR}/hockey/match/{mid}/")) if mid else []
+        except Exception as e:
+            print("передачи к итогу:", e, file=sys.stderr)
+            sr = []
+        for k, t, who, *_ in need:
+            for st_, sw, ast in sr:
+                if abs(st_ - t) <= 90 and sw.split()[-1] == who.split()[-1] and ast:
+                    known[f"{t}|{who}"] = ast
+    out = []
+    for k, t, who, mine, us, them in rows:
+        ast = known.get(f"{t}|{who}", [])
+        mark = "🏒" if mine else "·"
+        out.append(f"{mark} {k} {who}{' (' + ', '.join(ast) + ')' if ast else ''}, {t // 60}:{t % 60:02d}")
+    return "Шайбы:\n" + "\n".join(out)
 
 
 def live_set(d, g, now, us, them, period, feed):
@@ -1124,7 +1153,7 @@ def live_tick(now):
                 save("sent")
             if not late and us != them:
                 suffix = "Б" if se["period"] == 5 or "bul" in stt.get("type", "").lower() else "ОТ" if se["period"] == 4 or stt.get("ot") else ""
-                final_whistle(d, g, us, them, suffix, [r[2] for r in rows if r[3]])
+                final_whistle(d, g, us, them, suffix, [r[2] for r in rows if r[3]], goals_list(d, g, st, rows))
         live_set(d, g, now, us, them, se["period"],
                  [{"t": r[1], "who": r[2], "mine": r[3], "us": r[4], "them": r[5]} for r in rows])
     elif not se and st["src"] != "se" and now > g["kickoff"] + 600:

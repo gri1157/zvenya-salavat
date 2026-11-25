@@ -2217,9 +2217,21 @@ function razbor(d){
   if(kp){const f=kp.filter(r=>r[10]>0&&r[8]>0).sort((p,q)=>q[8]-p[8])[0];if(f)lines.push(`Быстрее всех — ${nm(f[0])}: ${f1(f[8])} км/ч в среднем, ${f1(f[10])} км за матч.`)}
   if(lg&&Agg){if(lg.pim!=null)lines.push(`Штрафные минуты ${lg.pim}:${lg.pima}.`);
     if(lg.blk!=null)lines.push(`Блоков ${lg.blk} (в среднем ${f1(Agg.blk)}), силовых ${lg.hit} (в среднем ${f1(Agg.hit)}).`)}
+  // все шайбы по порядку: счёт (хозяева:гости), автор и передачи; у соперника имён в протоколе нет
+  const goals=[],SG=typeof LGM!=="undefined"&&LGM.sg?LGM.sg[d]:null;
+  if(SG&&SG.length){let qh=0,qa=0;const TY={"БОЛ":"в большинстве","МЕН":"в меньшинстве","ПВ":"в пустые ворота","ПБ":"буллит в игре"};
+    // официальный протокол КХЛ: время, автор и передачи обеих команд
+    for(const [sec,side,sc,as,ty] of SG){if(side===0)qh++;else qa++;const mine=(side===0)===home,ty2=TY[ty]?` — ${TY[ty]}`:"";
+      goals.push(`${mine?"🏒":"·"} ${qh}:${qa} ${sc}${as.length?` (${as.join(", ")})`:""}${ty2}, ${mmss(sec)}${sec>3600?" ОТ":""}`)}
+    if(x==="Б")goals.push(`🎯 ${home?`${gf}:${ga}`:`${ga}:${gf}`} победный буллит — ${won?"наш":opp}`)}
+  else{let u=0,t=0;const TY={pp:"в большинстве",sh:"в меньшинстве",en:"в пустые ворота"};
+    for(const e of ev){if(e[0]===1)u++;else t++;const sc=home?`${u}:${t}`:`${t}:${u}`,ty=TY[e[1]]?` — ${TY[e[1]]}`:"",ot=e[5]===4?" (ОТ)":"";
+      if(e[0]===1){const as=[e[3],e[4]].filter(i=>i>=0).map(nm).filter(Boolean);goals.push(`🏒 ${sc} ${nm(e[2])||"Салават"}${as.length?` (${as.join(", ")})`:""}${ty}${ot}`)}
+      else goals.push(`· ${sc} ${opp}${ty}${ot}`)}
+    if(x==="Б")goals.push(`🎯 ${home?`${gf}:${ga}`:`${ga}:${gf}`} победный буллит — ${won?"наш":opp}`)}
   const tgTitle=`📊 Разбор: ${home?`Салават Юлаев ${gf}:${ga} ${opp}`:`${opp} ${ga}:${gf} Салават Юлаев`}${x?" "+x:""}`;
-  const tg=[tgTitle,...lines.filter(l=>!/^Протокол игроков/.test(l)).slice(0,9)].join("\n");
-  return {d,title,kv,lines,tg};
+  const tg=[tgTitle,...(goals.length?["","Шайбы:",...goals,""]:[]),...lines.filter(l=>!/^Протокол игроков|^Очки:/.test(l)).slice(0,9)].join("\n");
+  return {d,title,kv,lines,tg,goals};
 }
 const res3=(won,x)=>won?(x?`Победа (${x})`:"Победа"):(x?`Поражение (${x})`:"Поражение");
 const sv3=r=>r>=1?"1.000":"."+String(Math.round(r*1000)).padStart(3,"0");
@@ -2230,6 +2242,7 @@ function razborHTML(){
   return `<div class="sec" id="razSec"><div class="sec-head"><h2>Разбор матча</h2><label class="eyebrow">матч <select id="razSel">${ds.map(d=>{const g=GAMES.find(x=>x.d===d),l=teamLog("Салават Юлаев").find(x=>x.d===d);return `<option value="${d}"${d===razD?" selected":""}>${dShort(d)} · ${esc(g?g.o:l?l.opp:"")}</option>`}).join("")}</select></label></div>
    <p style="margin:4px 0 10px;font-weight:700">${esc(r.title)}</p>
    <div class="kpis">${r.kv.map(([k,v,sm])=>`<div class="tile"><span>${esc(k)}</span><b style="font-size:15px">${esc(v)}</b>${sm?`<small>${esc(sm)}</small>`:""}</div>`).join("")}</div>
+   ${r.goals&&r.goals.length?`<div class="panel"><h3>Шайбы</h3>${r.goals.map(l=>`<p class="note" style="margin:3px 0">${esc(l)}</p>`).join("")}</div>`:""}
    <div class="panel"><h3>Почему так вышло</h3>${r.lines.map(l=>`<p class="note" style="margin:4px 0">• ${esc(l)}</p>`).join("")}</div>
    <p class="note">По официальным протоколам: khl.ru (броски, большинство, штрафы, блоки, силовые, скорость), Allhockey (время и броски игроков). Этот же разбор утром после матча приходит в Telegram.</p></div>`;
 }
