@@ -7,7 +7,7 @@ const path = require('path');
 
 const SEASON = 1436;
 const CACHE = path.join(__dirname, 'league-games.json');
-const CACHE_V = 4; // меняется, когда меняется разбор: старый кэш тогда выбрасывается и всё собирается заново
+const CACHE_V = 5; // меняется, когда меняется разбор: старый кэш тогда выбрасывается и всё собирается заново
 const NAMES = { 'Торпедо': 'Торпедо НН', 'Драконы': 'Шанхай Дрэгонс', 'ХК Сочи': 'Сочи' };
 const MON = { 'января': 1, 'февраля': 2, 'марта': 3, 'апреля': 4, 'мая': 5, 'июня': 6, 'июля': 7, 'августа': 8, 'сентября': 9, 'октября': 10, 'ноября': 11, 'декабря': 12 };
 const nm = s => NAMES[s] || s;
@@ -74,8 +74,20 @@ function compact(id, raw, fin) {
   const ot = per[3][0] + per[3][1] > 0 || goals.some(r => +r[1] >= 4);
   // итоговый счёт — с карточки календаря (в нём уже учтён победный буллит)
   const s2 = fin || [ph, pa];
+  // у матчей «Салавата» — все шайбы с авторами и передачами (обеих команд): «№53 Педан Руслан(1)» → «Педан»
+  let gl;
+  if (h === 'Салават Юлаев' || a === 'Салават Юлаев') {
+    const hd = gt ? gt.rows[0] : [], ia = hd.indexOf('Автор'), ip = hd.indexOf('Передача');
+    const surs = c => (String(c || '').match(/№\d+\s+[^№]+/g) || []).map(x => x.replace(/^№\d+\s+/, '').replace(/\(\d+\)\s*$/, '').trim().split(' ')[0]);
+    let qh = 0;
+    gl = goals.map(r => {
+      const [x1, x2] = r[3].split(':').map(Number), side = x1 > qh ? 0 : 1; qh = x1;
+      const [mm, ss] = r[2].split(':').map(Number);
+      return [mm * 60 + ss, side, surs(r[ia])[0] || '', surs(r[ip]), (r[4] || '').toUpperCase()];
+    });
+  }
   return {
-    id: +id, d, h, a,
+    id: +id, d, h, a, ...(gl ? { gl } : {}),
     s: s2, x: so ? 'Б' : ot ? 'ОТ' : '', fg, per,
     sh: [shots[0] ? shots[0]['БВ'] : null, shots[1] ? shots[1]['БВ'] : null],
     pp: [nh ? [n(nh['Бол']), n(nh['ШБ'])] : null, na ? [n(na['Бол']), n(na['ШБ'])] : null],
@@ -109,7 +121,9 @@ function row(g) {
 }
 function write(html, games, date) {
   const list = Object.values(games).sort((x, y) => x.d.localeCompare(y.d) || x.id - y.id);
-  const line = 'const LGM=' + JSON.stringify({ d: date, src: 'khl.ru', c: COLS, g: list.map(row) }) + ';';
+  // sg — шайбы матчей «Салавата» по дате: [секунда, 0 хозяева / 1 гости, автор, [передачи], состав (РАВ/БОЛ/МЕН/ПВ…)]
+  const sg = Object.fromEntries(list.filter(g => g.gl).map(g => [g.d, g.gl]));
+  const line = 'const LGM=' + JSON.stringify({ d: date, src: 'khl.ru', c: COLS, g: list.map(row), sg }) + ';';
   if (/^const LGM=.*;$/m.test(html)) return html.replace(/^const LGM=.*;$/m, () => line);
   const m = html.match(/^const LTS=.*;$/m) || html.match(/^const TEAMS=.*;$/m);
   return html.replace(m[0], () => m[0] + '\n' + line);
@@ -148,7 +162,9 @@ async function main() {
   const mi = process.argv.indexOf('--max'); const MAX = mi > 0 ? +process.argv[mi + 1] : 400;
   const old = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, 'utf8')) : {};
   // кэш версий 2–3: матчи в основное время разобраны верно, у матчей с овертаймом терялись броски овертайма — их собираем заново
-  const games = old.v === CACHE_V ? old.g : old.v === 2 || old.v === 3 ? Object.fromEntries(Object.entries(old.g).filter(([, g]) => !g.x)) : {};
+  // кэш версии 4 верен, но у матчей «Салавата» в нём нет авторов шайб — только их собираем заново
+  const games = old.v === CACHE_V ? old.g : old.v === 4 ? Object.fromEntries(Object.entries(old.g).filter(([, g]) => g.h !== 'Салават Юлаев' && g.a !== 'Салават Юлаев'))
+    : old.v === 2 || old.v === 3 ? Object.fromEntries(Object.entries(old.g).filter(([, g]) => !g.x)) : {};
   const { chromium } = require('playwright');
   const b = await chromium.launch();
   const p = await b.newPage({ locale: 'ru-RU', userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36', viewport: { width: 1400, height: 900 } });
