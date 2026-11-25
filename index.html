@@ -160,6 +160,9 @@ select,input[type=text]{font:500 14px var(--body);padding:8px 10px;border-radius
 .bar{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
 .pg{display:flex;flex-direction:column;gap:6px;margin:8px 0}.pgrow{display:grid;grid-template-columns:64px 1fr;gap:6px;align-items:end}.pglab{font-size:12px;color:var(--muted);padding-bottom:16px}
 .pgbars{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:3px}.pgcol{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;min-height:58px}.pgcol i{display:block;width:70%;border-radius:3px 3px 0 0}.pgcol small{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.mdl{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--sunk);padding:1px 6px;border-radius:5px;margin-left:4px;vertical-align:middle;white-space:nowrap}
+.fcrow{display:grid;grid-template-columns:1fr 90px 34px;gap:8px;align-items:center;font-size:14px;margin:6px 0}.fcrow b{text-align:right;font-variant-numeric:tabular-nums}
+.fcbar{position:relative;height:8px;background:var(--sunk);border-radius:4px}.fcbar i{position:absolute;top:0;bottom:0;border-radius:4px}.fcbar::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;border-left:1px solid var(--muted)}
 .alert{margin:6px 0;padding:10px 12px;border-radius:10px;font-size:14px}.alert.bad{background:color-mix(in srgb,var(--bad) 14%,var(--bg));color:var(--fg)}.alert.warn{background:color-mix(in srgb,var(--gold) 16%,var(--bg))}.alert.ok{background:var(--sunk)}
 .vshead{display:flex;justify-content:space-between;gap:8px;font-size:14px;margin:10px 0 4px}.vshead span{font-size:12px;color:var(--muted)}
 .vsrow{display:grid;grid-template-columns:52px 1fr 52px;gap:4px 8px;align-items:center;margin:8px 0;font-variant-numeric:tabular-nums}
@@ -1006,7 +1009,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.102.80";
+const APP_VERSION="1.103.81";
 const UPDATED={n:3,date:"25 ноября 2026",table:"25 ноября",after:"матча с Нефтехимиком (24 ноября, 5:4 ОТ)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -1602,9 +1605,9 @@ function renderRival(){
    ${side("Салават Юлаев сейчас",S.base,S.rating,S.att,S.def,`<small>состав ×${f2(S.aF)} к атаке · вратарь ${S.gk?esc(SUR(S.gk.name)):"—"} ×${f2(S.gF)} к пропущенным${S.formNote?` · ${S.formNote}`:""}</small><small>броски ${f1(S.sf)} : ${f1(S.sa)} за матч${S.wS?`, вес бросков ${Math.round(S.wS*100)}%`:""}</small>`)}
    ${side(esc(opp.name),opp,O.rating,O.att,O.def,`<small>${opp.conf} · ${opp.pts} ${pl(opp.pts,["очко","очка","очков"])} за ${opp.gp} ${pl(opp.gp,MATCH)} · ${opp.gf}:${opp.ga}</small>${O.sf?`<small>броски ${f1(O.sf)} : ${f1(O.sa)} за матч${O.wS?`, вес бросков ${Math.round(O.wS*100)}%`:""}</small>`:""}`)}
   </div>
-  <div class="sec"><div class="sec-head"><h2>Симуляция матча</h2><span class="eyebrow">20 000 виртуальных игр</span></div>
+  <div class="sec"><div class="sec-head"><h2>Симуляция матча ${MDL}</h2><span class="eyebrow">20 000 виртуальных игр</span></div>
    <div class="grid3">
-    <div class="tile"><span>Победа Салавата</span><b class="good">${pct(win)}</b><small>в основное время ${pct(r.W)}</small></div>
+    <div class="tile"><span>Победа Салавата ${MDL}</span><b class="good">${pct(win)}</b><small>в основное время ${pct(r.W)}</small></div>
     <div class="tile"><span>Поражение</span><b class="bad">${pct(loss)}</b><small>в основное время ${pct(r.L)}</small></div>
     <div class="tile"><span>Овертайм или буллиты</span><b>${pct(r.OTW+r.SOW+r.OTL+r.SOL)}</b><small>победа ${pct(r.OTW+r.SOW)} · поражение ${pct(r.OTL+r.SOL)}</small></div>
     <div class="tile"><span>${T("xg","Ожидаемые голы")}</span><b>${f1(SIM.xS)} : ${f1(SIM.xO)}</b><small>Салават : ${esc(opp.name)}</small></div>
@@ -1617,7 +1620,7 @@ function renderRival(){
   ${hist?`<p class="note">В этом сезоне с ${esc(opp.name)}: ${esc(hist)}.</p>`:""}
   <p class="note">Модель для интереса и разбора, а не прогноз для ставок. Ожидаемые голы считаются от среднего по лиге (${f2(LEAGUE_G)} за матч) с учётом атаки и обороны обеих команд, площадки (дома +6%), состава и вратаря Салавата. С бросками половина веса у бросков обеих команд: у Салавата свои броски умножаются на среднюю реализацию лиги, пропущенные на % отражений вратаря, у соперника его броски сравниваются со средним по лиге (${f1(LG_SF)} за матч). Форма соперника пока не учитывается.</p>
   ${R?rivalDetails(R):`<p class="note">Подробный разбор лидеров и вратарей есть для ближайших соперников. Для этой команды пока только уровень силы.</p>`}
-  <div class="sec"><div class="sec-head"><h2>Сила команд КХЛ</h2><span class="eyebrow">нажми, чтобы выбрать соперника</span></div>
+  <div class="sec"><div class="sec-head"><h2>Сила команд КХЛ ${MDL}</h2><span class="eyebrow">нажми, чтобы выбрать соперника</span></div>
    <div class="tablewrap"><table><thead><tr><th>#</th><th class="l">Команда</th><th class="l">Конф.</th><th>Сила</th><th class="l"></th><th>Забив.</th><th>Пропуск.</th><th>Бр/м</th><th>Пр. бр/м</th><th>Очки</th><th>М</th></tr></thead><tbody>${TIDX.map((t,i)=>`<tr${t.name==="Салават Юлаев"?' class="win"':""}><td>${i+1}</td><td class="l">${t.name==="Салават Юлаев"?`<b>${esc(t.name)}</b>`:`<button class="nm" data-pick="${esc(t.name)}">${esc(t.name)}</button>`}</td><td class="l">${t.conf}</td><td><b>${oppStr(t).rating}</b></td><td class="l" style="min-width:90px">${bar(oppStr(t).rating,100)}</td><td>${f2(t.gf/t.gp)}</td><td>${f2(t.ga/t.gp)}</td><td>${TSH[t.name]?f1(TSH[t.name][1]/TSH[t.name][0]):"—"}</td><td>${TSH[t.name]?f1(TSH[t.name][2]/TSH[t.name][0]):"—"}</td><td>${t.pts}</td><td>${t.gp}</td></tr>`).join("")}</tbody></table></div>
    <p class="note">Сила от 0 до 100: соотношение забитых и пропущенных за матч к среднему по лиге, с поправкой на маленькое число матчей и с учётом бросков — та же цифра, что в «Сопернике», «Плане» и календаре. 50 означает среднюю команду. Таблица на 25 ноября: сверена с таблицей Sports.ru (победы в ОТ/Б — столбец «ВО»), учтены матчи по 18.11 включительно. Бр/м и Пр. бр/м: броски в створ и пропущенные броски за матч, Allhockey (на 14 ноября; у Салавата и Адмирала добавлен матч 16.11 по протоколу).</p></div>${ltsTable()}`;
 }
@@ -1833,6 +1836,7 @@ const TERMS={
  sog:["Броски в створ","Броски, которые долетели до вратаря или стали голом. Броски мимо ворот и заблокированные не считаются.",0],
  blk:["Блоки","Блокированные броски: игрок встал под шайбу и не дал ей долететь до ворот. Особенно важно для защитников.",0],
  hits:["Силовые приёмы","Сколько раз игрок жёстко встретил соперника корпусом в борьбе за шайбу.",0],
+ fcf:["Из чего сложился процент","Модель считает ожидаемые голы обеих команд: атака × оборона соперника × площадка (дома +6%). Атака и оборона «Салавата» — из состава на матч и вратаря, соперника — из его голов и пропущенных. Каждая строка — насколько изменился бы шанс победы, если бы этот фактор был как у средней команды лиги. Строки не складываются точно в итог, потому что факторы влияют друг на друга. «Что ещё учесть» — официальные цифры (отдых, форма, спецбригады, % отражённых), которых в модели нет.",0],
  gkform:["Форма и нагрузка вратаря","% отражённых по матчам и за 5 последних матчей (Allhockey). «В старте» — матчи, где он провёл больше всех времени в воротах. Дни отдыха — от его последнего матча до ближайшего матча команды по календарю. «Против соперника» — его матчи против ближайшего соперника в этом сезоне.",0],
  p60:["Анализ игрока","Очки и броски за 60 минут — результативность с поправкой на время: игрок с 10 минутами и игрок с 20 сравниваются честно. Место — среди игроков той же позиции «Салавата» (не меньше 8 матчей). Время в большинстве и меньшинстве — из протоколов КХЛ. Звено — по последнему составу. Графики — последние 10 матчей, каждый ряд в своём масштабе. «С кем лучше» — голы в равных составах за и против, когда оба игрока были на льду.",0],
  alerts:["Тревоги","Сигналы по официальным цифрам, когда что-то идёт не так. Пороги: нападающий 5+ матчей подряд без очков или на 2+ минуты меньше времени за 5 матчей, чем в сезоне; основной вратарь ниже .900 за 5 матчей или 6+ игр подряд в старте; 3+ поражения подряд; меньшинство за 10 матчей ниже 75% или большинство ниже 15%; удалений за 5 матчей больше, чем у соперников, на 3+; 3-й период в минус в 3 из 5 последних матчей. «Близко к порогу» — до тревоги остался шаг. О новой тревоге бот пишет владельцу в Telegram.",0],
@@ -1880,6 +1884,32 @@ function renderStand(){const el=document.getElementById("tableBody");if(!el||!ST
   <p class="legend" data-tr="wl"><b>И</b> — игры, <b>В</b> — все победы, <b>П</b> — поражения в основное время, <b>ПО</b> — поражения в овертайме и по буллитам (за них дают 1 очко), <b>Ш</b> — забитые и пропущенные шайбы, <b>О</b> — очки: 2 за любую победу. Зелёная черта — граница ${T("po","плей-офф")}: проходят 8 команд. ${STAND_FULL?"При равных очках выше команда, у которой больше побед в основное время.":"При равных очках порядок может отличаться от официального."} Таблица на ${esc(UPDATED.table||UPDATED.date)}.</p>`}
 document.getElementById("tableBody").addEventListener("click",e=>{const b=e.target.closest("[data-conf]");if(b){tblConf=b.dataset.conf;renderStand()}});
 // ===== LITE: карточка ближайшего матча =====
+// ===== Прогноз: из чего сложился процент (модель) и что ещё стоит учесть (официальные факты)
+const MDL=`<span class="mdl" title="оценка модели приложения, не официальная цифра">модель</span>`;
+function fcFactors(r){
+  if(!r||!r.S||!r.O)return "";
+  const H=r.h?HOME:1/HOME,base=r.p.win,P_=(sa,sd,oa,od,h)=>matchProb(LEAGUE_G*sa*od*h,LEAGUE_G*oa*sd/h).win;
+  const F=[[r.h?"Играем дома":"Играем в гостях",base-P_(r.S.att,r.S.def,r.O.att,r.O.def,1)],
+    ["Наша атака (состав на матч)",base-P_(1,r.S.def,r.O.att,r.O.def,H)],
+    [`Наша оборона и вратарь${r.gk?" — "+SUR(r.gk.name):""}`,base-P_(r.S.att,1,r.O.att,r.O.def,H)],
+    [`Атака «${r.o}»`,base-P_(r.S.att,r.S.def,1,r.O.def,H)],[`Оборона «${r.o}»`,base-P_(r.S.att,r.S.def,r.O.att,1,H)]];
+  const row=([l,v])=>{const pp=Math.round(v*100),w=Math.min(50,Math.abs(v*100)*5);
+    return `<div class="fcrow"><span>${esc(l)}</span><div class="fcbar"><i style="${v>=0?"left:50%":"right:50%"};width:${w}%;background:${v>=0?"var(--good)":"var(--bad)"}"></i></div><b class="${pp>0?"good":pp<0?"bad":""}">${pp>0?"+":""}${pp}</b></div>`};
+  const facts=[],LO=teamLog(r.o).filter(x=>x.d<r.d),LU=teamLog(US).filter(x=>x.d<r.d),dd=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5)-1;
+  if(LO.length&&LU.length){const ro=dd(LO[LO.length-1].d,r.d),ru=dd(LU[LU.length-1].d,r.d);
+    facts.push([ru>ro?1:ru<ro?-1:0,`Отдых: у нас ${ru} ${pl(ru,["день","дня","дней"])}, у них ${ro}.`])}
+  const A=teamAgg(LU.slice(-10)),B=teamAgg(LO.slice(-10));
+  if(A&&B)facts.push([Math.sign(Math.round((A.pts-B.pts)*10)),`Форма за 10 матчей: ${f2(A.pts)} очка за матч у нас, ${f2(B.pts)} у них.`]);
+  const Ls=typeof LTS!=="undefined"&&LTS.t?[LTS.t[US],LTS.t[r.o]]:null;
+  if(Ls&&Ls[0]&&Ls[1]){const pp=x=>x.ppo?x.ppg/x.ppo*100:0,pk=x=>x.pko?(1-x.ppga/x.pko)*100:0;
+    const edge=(pp(Ls[0])-pp(Ls[1]))+(pk(Ls[0])-pk(Ls[1])); // у кого спецбригады сильнее в сумме
+    facts.push([Math.sign(Math.round(edge)),`Спецбригады за сезон: наше большинство ${f1(pp(Ls[0]))}% против их меньшинства ${f1(pk(Ls[1]))}%; их большинство ${f1(pp(Ls[1]))}% против нашего меньшинства ${f1(pk(Ls[0]))}%.`])}
+  if(A&&B)facts.push([Math.sign(Math.round((A.sv-B.sv)*2)),`% отражённых за 10 матчей: ${f1(A.sv)} у нас, ${f1(B.sv)} у них.`]);
+  const ar=v=>v>0?`<b class="good">▲</b>`:v<0?`<b class="bad">▼</b>`:`<b class="mut">●</b>`;
+  return `<div class="panel fcf"><h3>Из чего сложился процент ${MDL} ${T("fcf","?")}</h3>${F.map(row).join("")}
+   <p class="legend">Сколько процентных пунктов к шансу победы добавляет (+) или отнимает (−) каждый фактор по сравнению со средней командой лиги.</p>
+   ${facts.length?`<h3>Что ещё учесть</h3>${facts.map(([v,t])=>`<p class="note" style="margin:3px 0">${ar(v)} ${esc(t)}</p>`).join("")}<p class="legend">Официальные цифры КХЛ. В модель не входят — для собственного решения.</p>`:""}</div>`;
+}
 function nextCard(){
   if(!STATE.LU)return "";let SC;try{SC=salSchedule()}catch(e){return ""}
   const r=SC.rows.find(x=>x.d>=todayISO);if(!r||!r.lu)return "";
@@ -1900,9 +1930,10 @@ function nextCard(){
    ${live}
    <div><div class="odds-l"><span><b>${pw}%</b> Салават</span><span>${esc(r.o)} <b>${100-pw}%</b></span></div>
    <div class="odds" role="img" aria-label="Шанс победы Салавата ${pw}%"><i class="us" style="width:${pw}%"></i><i class="th" style="width:${100-pw}%"></i></div></div>
-   <p class="legend">${T("win","Шанс победы")} с учётом ${T("otb","овертайма и буллитов")}. В основное время: победа ${reg}%, поражение ${regL}%, ничья ${100-reg-regL}%.</p>
+   <p class="legend">${T("win","Шанс победы")} ${MDL} с учётом ${T("otb","овертайма и буллитов")}. В основное время: победа ${reg}%, поражение ${regL}%, ничья ${100-reg-regL}%.</p>
+   ${fcFactors(r)}
    <div class="grid3">
-    <div class="tile"><span>${T("xg","Ожидаемый счёт")}</span><b>${f1(r.lS)} : ${f1(r.lO)}</b><small>Салават : ${esc(r.o)}</small></div>
+    <div class="tile"><span>${T("xg","Ожидаемый счёт")} ${MDL}</span><b>${f1(r.lS)} : ${f1(r.lO)}</b><small>Салават : ${esc(r.o)}</small></div>
     <div class="tile"><span>Соперник в таблице</span><b>${st?`${st.pl}-е место`:"—"}</b><small>${st?`<span>${st.conf}</span>, <span>${st.pts} ${pl(st.pts,OCH)}</span> · `:""}${T("str","сила")} <span>${r.O.rating}</span>${me?` · <span>мы на ${me.pl}-м месте</span>`:""}</small></div>
     <div class="tile"><span>Встречи в этом сезоне</span><b>${h2h.length?`${hw} ${pl(hw,WINS)} из ${h2h.length}`:"ещё не играли"}</b><small>${h2h.map(g=>`<span>${dShort(g.d)} ${g.h?"дома":"в гостях"} ${g.gf}:${g.ga}</span>${g.x?` <span>${g.x}</span>`:""}`).join(", ")}</small></div>
     <div class="tile"><span>Вероятный вратарь</span><b>${r.gk?esc(SUR(r.gk.name)):"—"}</b><small>${gs&&gs.p!=null?`${f1(gs.p*100)}% отражённых в сезоне`:"в этом сезоне не играл"}</small></div></div>
@@ -2082,11 +2113,12 @@ function renderPlan(){
    ${tripFlags(x)?`<div class="meta">${tripFlags(x)}</div>`:""}
   </div>
   <div class="grid3">
-   <div class="tile"><span>Победа Салавата</span><b class="good">${pct(win)}</b><small>в основное время ${pct(r.W)}</small></div>
+   <div class="tile"><span>Победа Салавата ${MDL}</span><b class="good">${pct(win)}</b><small>в основное время ${pct(r.W)}</small></div>
    <div class="tile"><span>Ожидаемые голы</span><b>${f1(sim.xS)} : ${f1(sim.xO)}</b><small>Салават : ${esc(x.o)}</small></div>
    <div class="tile"><span>Самый вероятный счёт</span><b>${esc(sc(sim.top[0][0]))}</b><small>${pct(sim.top[0][1])} · хозяева первыми</small></div>
    <div class="tile"><span>Вратарь</span><b>${gk?esc(SUR(gk.name)):"—"}</b><small>${esc(rot.why||"")}${g2?` · в запасе ${esc(SUR(g2.name))}`:""}</small></div>
   </div>
+  ${(()=>{const H=x.h?HOME:1/HOME;return fcFactors({S,O,h:x.h,o:x.o,d:x.d,gk,p:matchProb(LEAGUE_G*S.att*O.def*H,LEAGUE_G*O.att*S.def/H)})})()}
   <div class="ctl-row no-print"><span class="ctl-label">Считать по</span><div class="seg">${shotSeg()}</div></div>
   <div class="panel"><div class="sec-head"><h2>Состав</h2><span class="eyebrow">${esc(D.src)}</span></div>
    <div>${lines}</div>
@@ -2651,7 +2683,7 @@ function renderGM(){
    ${gmMode==="sim"?`<div class="ctl-row"><span class="ctl-label">Похож на</span><select id="gmRef">${mine.map(p=>`<option value="${esc(p.name)}"${p.name===gmRef?" selected":""}>${esc(p.name)}${outOn(p.name,nd)?" (вне игры)":""}</option>`).join("")}</select></div>`:""}
    <div>${cRows||`<p class="note">Подходящих игроков нет.</p>`}</div>
    <p class="note">${gmMode==="sim"?"Справа: насколько игрок похож по очкам и броскам за 60 минут, времени на льду, плюс-минусу и штрафу.":`Справа: очки за 60 минут; только те, кто играет больше ${gmPos==="D"?17:15} минут.`} Нажми на фамилию, чтобы открыть карточку на вкладке «Агент». Хват у игроков других клубов открыто не публикуется, его надо проверять отдельно.</p></div>
-  <div class="sec jumpt" id="gm-fc"><div class="sec-head"><h2>Прогноз регулярки: ${conf}</h2><span class="eyebrow">${S.N.toLocaleString("ru-RU")} сезонов по календарю</span></div>
+  <div class="sec jumpt" id="gm-fc"><div class="sec-head"><h2>Прогноз регулярки: ${conf} ${MDL}</h2><span class="eyebrow">${S.N.toLocaleString("ru-RU")} сезонов по календарю</span></div>
    <div class="grid3">
     <div class="tile"><span>8-е место ${conf==="Восток"?"на Востоке":"на Западе"}</span><b>≈${S.cut.med} ${pl(S.cut.med,["очко","очка","очков"])}</b><small>в 8 сезонах из 10 от ${S.cut.lo} до ${S.cut.hi}</small></div>
     <div class="tile"><span>Нам осталось набрать</span><b class="${needP>nowP+.05?"bad":needP<nowP-.05?"good":""}">≈${need}</b><small>в ${remN} ${pl(remN,["матче","матчах","матчах"])}: ${pct(needP)} очков, сейчас набираем ${pct(nowP)}</small></div>
@@ -3087,7 +3119,7 @@ function renderGame(){const el=document.getElementById("gameBody");if(!el||!STAT
   const fives=GSEL?[0,1,2,3].map(i=>`<div class="five"><div class="five-top"><span class="five-name">${i+1}-я пятёрка</span></div><div class="row f">${[0,1,2].map(j=>gSlotBtn("f",i,j,GPOS.f[j])).join("")}</div><div class="row d">${[0,1].map(j=>gSlotBtn("d",i,j,GPOS.d[j])).join("")}</div></div>`).join("")+`<div class="five"><div class="row u4">${gSlotBtn("g",0,0,"ВРАТАРЬ")}</div></div>`:"";
   const saveNote=!nx?"":lock?`${cur?`<button class="btn pri" data-gshare>📤 Поделиться прогнозом</button>`:""}<p class="note"><b>Прогноз принят</b>${cur?` ${new Date(cur.ts).toLocaleString("ru-RU",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Yekaterinburg"})} по Уфе`:""}. Один прогноз на матч, изменить его нельзя. Очки — после матча.</p>`:today?`<p class="note">Отправить можно один раз, приём закрывается в ${deadT(nx)} по Уфе — за 10 минут до начала матча. После отправки изменить нельзя.</p>`:`<p class="note">Отправить прогноз можно только в день матча — ${esc(dLong(nx.d))}, до ${deadT(nx)} по Уфе. Собирать состав можно уже сейчас: он сохранится на этом устройстве.</p>`;
   const form=nx?`<div class="panel">
-   <div class="sec-head"><h2>Прогноз на матч</h2><span class="eyebrow">${lock?"принят":today?"сегодня":"в день матча"}</span></div>
+   <div class="sec-head"><h2>Прогноз на матч ${MDL}</h2><span class="eyebrow">${lock?"принят":today?"сегодня":"в день матча"}</span></div>
    <div class="plan-head"><b>${esc(dLong(nx.d))}${nx.t?`, ${ufaT(nx.t)} по Уфе`:""}</b><div class="note">Салават Юлаев — ${esc(nx.o)} · ${nx.h?"дома":"в гостях"}</div></div>
    <h3>1. Твой состав <small class="note">${filled} из 21</small></h3>
    <p class="legend">Нажми на пустое место и выбери игрока. Рядом с каждым — очки, плюс-минус, время на льду, скорость и форма.</p>
