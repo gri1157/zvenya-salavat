@@ -158,6 +158,8 @@ select,input[type=text]{font:500 14px var(--body);padding:8px 10px;border-radius
 .trk-row b{font-variant-numeric:tabular-nums;text-align:right}
 .trk-row small{grid-column:1/-1;color:var(--muted);font-size:12px}
 .bar{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.pg{display:flex;flex-direction:column;gap:6px;margin:8px 0}.pgrow{display:grid;grid-template-columns:64px 1fr;gap:6px;align-items:end}.pglab{font-size:12px;color:var(--muted);padding-bottom:16px}
+.pgbars{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:3px}.pgcol{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;min-height:58px}.pgcol i{display:block;width:70%;border-radius:3px 3px 0 0}.pgcol small{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
 .alert{margin:6px 0;padding:10px 12px;border-radius:10px;font-size:14px}.alert.bad{background:color-mix(in srgb,var(--bad) 14%,var(--bg));color:var(--fg)}.alert.warn{background:color-mix(in srgb,var(--gold) 16%,var(--bg))}.alert.ok{background:var(--sunk)}
 .vshead{display:flex;justify-content:space-between;gap:8px;font-size:14px;margin:10px 0 4px}.vshead span{font-size:12px;color:var(--muted)}
 .vsrow{display:grid;grid-template-columns:52px 1fr 52px;gap:4px 8px;align-items:center;margin:8px 0;font-variant-numeric:tabular-nums}
@@ -1004,7 +1006,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.100.78";
+const APP_VERSION="1.101.79";
 const UPDATED={n:3,date:"25 ноября 2026",table:"25 ноября",after:"матча с Нефтехимиком (24 ноября, 5:4 ОТ)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -1831,6 +1833,7 @@ const TERMS={
  sog:["Броски в створ","Броски, которые долетели до вратаря или стали голом. Броски мимо ворот и заблокированные не считаются.",0],
  blk:["Блоки","Блокированные броски: игрок встал под шайбу и не дал ей долететь до ворот. Особенно важно для защитников.",0],
  hits:["Силовые приёмы","Сколько раз игрок жёстко встретил соперника корпусом в борьбе за шайбу.",0],
+ p60:["Анализ игрока","Очки и броски за 60 минут — результативность с поправкой на время: игрок с 10 минутами и игрок с 20 сравниваются честно. Место — среди игроков той же позиции «Салавата» (не меньше 8 матчей). Время в большинстве и меньшинстве — из протоколов КХЛ. Звено — по последнему составу. Графики — последние 10 матчей, каждый ряд в своём масштабе. «С кем лучше» — голы в равных составах за и против, когда оба игрока были на льду.",0],
  alerts:["Тревоги","Сигналы по официальным цифрам, когда что-то идёт не так. Пороги: нападающий 5+ матчей подряд без очков или на 2+ минуты меньше времени за 5 матчей, чем в сезоне; основной вратарь ниже .900 за 5 матчей или 6+ игр подряд в старте; 3+ поражения подряд; меньшинство за 10 матчей ниже 75% или большинство ниже 15%; удалений за 5 матчей больше, чем у соперников, на 3+; 3-й период в минус в 3 из 5 последних матчей. «Близко к порогу» — до тревоги остался шаг. О новой тревоге бот пишет владельцу в Telegram.",0],
  vs:["Мы — они","Салават и соперник рядом по официальным протоколам КХЛ всех матчей лиги. Полоска делится пропорционально двум числам: зелёная часть — наша, синяя — их. Зелёным выделено число той команды, у которой показатель лучше (для пропущенных, бросков соперника и штрафов лучше меньше). «10 матчей» и «5 матчей» — последние матчи каждой команды. Вбрасывания есть только за сезон. «Главное» — все заметные разницы между командами.",0],
  ppp:["Реализация большинства","Сколько численных преимуществ команда превратила в гол, в процентах. Считается по официальной статистике КХЛ: голы в большинстве ÷ число полученных большинств. В среднем по лиге около 20%.",0],
@@ -3205,6 +3208,49 @@ function shareSheet(){
   <div id="shareOut" class="sec"></div>
   <p class="note">${dbOk?(TG?"Код и голоса видят все, кто открывает приложение в боте.":"Код и голоса видят те, с кем ты поделился приложением через меню «Поделиться» в Claude."):"Коды и народный состав работают, когда приложение открыто в Claude."}</p>`)}
 const playerSheet=p=>UI==="lite"?playerSheetLite(p):playerSheetPro(p);
+// ===== Карточка игрока, Pro: за 60 минут, графики по матчам, роль в команде, партнёры (официальные протоколы)
+function pGames(id){ // матчи игрока: дата, соперник, время, +/-, броски, очки, голы, скорость
+  const out=[];for(const a of AH){const r=(a[4]||[]).find(x=>x[0]===id);if(!r)continue;const g=GAMES.find(x=>x.d===a[0]);let gg=0,aa=0;
+    if(g)for(const e of g.g)if(e[0]===1){if(e[2]===id)gg++;if(e[3]===id||e[4]===id)aa++}
+    const k=typeof KP!=="undefined"&&KP[a[0]]?KP[a[0]].find(x=>x[0]===id):null;
+    out.push({d:a[0],o:g?g.o:"",t:r[1],pm:r[2],sh:r[3],g:gg,a:aa,pts:gg+aa,spd:k&&k[8]>0?k[8]:null,km:k&&k[10]>0?k[10]:null,pp:k?k[1]:null,pk:k?k[2]:null})}
+  return out.sort((x,y)=>x.d.localeCompare(y.d))}
+function pRank(p,key,min){ // место в команде среди той же позиции (1 — лучший)
+  const pool=P.filter(o=>o.pos===p.pos).map(o=>{const L=pGames(o.id);return {o,L}}).filter(x=>x.L.length>=min).map(x=>({id:x.o.id,v:key(x.L)})).filter(x=>x.v!=null).sort((a,b)=>b.v-a.v);
+  const i=pool.findIndex(x=>x.id===p.id);return i<0?null:{r:i+1,n:pool.length}}
+function playerAnalysis(p){
+  if(p.pos==="G")return "";const L=pGames(p.id);if(L.length<3)return "";
+  const S=k=>L.reduce((s,x)=>s+(x[k]||0),0),toi=S("t");
+  const per60=v=>toi?v*3600/toi:0,p60=per60(S("pts")),s60=per60(S("sh"));
+  const pos=p.pos==="F"?"нападающих":"защитников";
+  const r60=pRank(p,l=>{const t=l.reduce((s,x)=>s+x.t,0);return t?l.reduce((s,x)=>s+x.pts,0)*3600/t:null},8),rT=pRank(p,l=>l.reduce((s,x)=>s+x.t,0)/l.length,5);
+  const kpL=L.filter(x=>x.pp!=null),pp=kpL.length?kpL.reduce((s,x)=>s+x.pp,0)/kpL.length:null,pk=kpL.length?kpL.reduce((s,x)=>s+x.pk,0)/kpL.length:null;
+  const rPP=kpL.length?pRank(p,l=>{const z=l.filter(x=>x.pp!=null);return z.length?z.reduce((s,x)=>s+x.pp,0)/z.length:null},3):null;
+  const rPK=kpL.length?pRank(p,l=>{const z=l.filter(x=>x.pk!=null);return z.length?z.reduce((s,x)=>s+x.pk,0)/z.length:null},3):null;
+  const C=COACH[0];let line="";if(C){C.f.forEach((l,i)=>{if(l.includes(p.name))line=`${i+1}-е звено`});C.d.forEach((d,i)=>{if(d.includes(p.name))line=`${i+1}-я пара защитников`})}
+  const k=(v,l)=>`<div class="kpi"><b>${v}</b><span>${l}</span></div>`,rk=r=>r?` · ${r.r}-й из ${r.n}`:"";
+  // графики: последние 10 матчей, столбики в масштабе своего ряда
+  const G=L.slice(-10),bars=(lab,key,fmt,col,base)=>{const vals=G.map(x=>x[key]);if(vals.every(v=>v==null))return "";const nn=vals.filter(v=>v!=null),mx=Math.max(...nn)||1,b0=base?Math.min(...nn)*.9:0;
+    return `<div class="pgrow"><span class="pglab">${lab}</span><div class="pgbars">${G.map(x=>{const v=x[key];return `<div class="pgcol" title="${dShort(x.d)} ${esc(x.o)}"><i style="height:${v==null?0:Math.max(2,Math.round((v-b0)/((mx-b0)||1)*44))}px;background:${col}"></i><small>${v==null?"—":fmt(v)}</small></div>`}).join("")}</div></div>`};
+  const graph=`<div class="pg">${bars("Очки","pts",v=>v,"var(--accent)")}${bars("Время","t",v=>Math.round(v/60),"var(--opp)")}${bars("Броски","sh",v=>v,"var(--gold)")}${bars("Скорость","spd",v=>Math.round(v),"var(--muted)",1)}
+   <div class="pgrow"><span class="pglab">Число</span><div class="pgbars">${G.map(x=>`<div class="pgcol" style="min-height:0"><small>${+x.d.slice(8)}</small></div>`).join("")}</div></div>
+   <p class="legend">С ${dShort(G[0].d)} по ${dShort(G[G.length-1].d)}. Время — минуты на льду, скорость — средняя, км/ч (система слежения КХЛ, шкала от самого медленного матча).</p></div>`;
+  // партнёры: голы в равных составах, когда оба были на льду (протоколы КХЛ)
+  const pr={};if(typeof KG!=="undefined")for(const d of Object.keys(KG))for(const e of KG[d]){if(e[2]!=="ev"||!e[3].includes(p.id))continue;for(const o of e[3]){if(o===p.id)continue;const z=pr[o]=pr[o]||{f:0,a:0};if(e[1]===1)z.f++;else z.a++}}
+  const parts=Object.entries(pr).map(([o,z])=>({o:P[+o],f:z.f,a:z.a})).filter(x=>x.o&&x.o.pos!=="G"&&x.f+x.a>=3).sort((x,y)=>(y.f-y.a)-(x.f-x.a)||y.f-x.f);
+  const best=parts.slice(0,5),worst=parts.length>6?parts.slice(-2).filter(x=>x.f<x.a):[];
+  const facts=[];
+  if(r60&&r60.r<=3)facts.push(`${r60.r}-й в команде среди ${pos} по очкам за 60 минут.`);
+  if(rT&&rT.r<=3&&r60&&r60.r>=r60.n-2)facts.push(`Много времени (${rT.r}-й среди ${pos}), но мало очков за 60 минут (${r60.r}-й из ${r60.n}).`);
+  if(rT&&rT.r>=rT.n-2&&r60&&r60.r<=4)facts.push(`Результативен на минуту льда (${r60.r}-й), а времени получает мало (${rT.r}-й из ${rT.n}).`);
+  {const l5=L.slice(-5),t5=l5.reduce((s,x)=>s+x.t,0)/l5.length,ta=toi/L.length;if(L.length>=10&&Math.abs(t5-ta)>=90)facts.push(`За 5 матчей ${mmss(t5)} на льду — ${t5>ta?"больше":"меньше"} сезона (${mmss(ta)}).`)}
+  return `<div class="sec"><h2>Анализ ${T("p60","?")}</h2>
+   <div class="kpis">${k(f2(p60),"очков за 60 мин"+rk(r60))}${k(f1(s60),"бросков за 60 мин")}${k(mmss(toi/L.length),"время за матч"+rk(rT))}${pp!=null?k(mmss(pp),"в большинстве за матч"+rk(rPP)):""}${pk!=null?k(mmss(pk),"в меньшинстве за матч"+rk(rPK)):""}${line?k(line,`по составу на ${dShort(C.date)}`):""}</div>
+   ${facts.length?`<div class="panel">${facts.map(f=>`<p class="note" style="margin:3px 0">• ${esc(f)}</p>`).join("")}</div>`:""}
+   <h3>Последние ${G.length} ${pl(G.length,MATCH)}</h3>${graph}
+   <h3>С кем лучше в равных составах</h3>${best.length?`<div class="links">${best.map(x=>`<div class="link"><span>${esc(x.o.name)}</span><b>${x.f}:${x.a}</b></div>`).join("")}${worst.map(x=>`<div class="link"><span>${esc(x.o.name)} <small>хуже всего</small></span><b>${x.f}:${x.a}</b></div>`).join("")}</div>
+   <p class="legend">Голы в равных составах «за : против», когда оба были на льду. Протоколы КХЛ, ${Object.keys(typeof KG!=="undefined"?KG:{}).length} ${pl(Object.keys(typeof KG!=="undefined"?KG:{}).length,MATCH)}.</p>`:`<p class="note">Мало совместных голов в протоколах КХЛ.</p>`}</div>`;
+}
 function playerSheetPro(p){
   sheetP=p;const lu=STATE.LU[board];const st=status(p);const av=isAvail(p);const here=locate(lu,p);
   const rows=["26","25","24"].map(k=>{const d=SEAS[k][p.name];if(!d)return"";return `<tr><td class="l">${SLAB[k]}</td><td class="l">${esc((CLUB[k]||{})[p.name]||"Салават")}</td><td>${d[0]}</td><td>${d[1]}</td><td>${d[2]}</td><td>${pmS(d[3])}</td><td>${d[4]}</td><td>${d[5]}</td></tr>`}).join("");
@@ -3218,6 +3264,7 @@ function playerSheetPro(p){
   ${st?`<div class="status-line">${esc(st[0][0].toUpperCase()+st[0].slice(1))}: ${esc(st[1])}</div>`:""}
   ${newbieNote(p)}<button class="linkbtn" data-how="${p.id}">Из чего сложился рейтинг ${p.has?p.sc:""}</button>
   <div class="kpis">${k(p.has?p.sc:"—",T("rating","рейтинг"))}${k(f2(p.ppg),T("pts","очков за матч"))}${k(p.fN.gp?f2(p.fppg):"—",T("form",`форма, ${formN} матчей`))}${k(p.toiS,T("toi","время на льду"))}${k(f1(p.spg),T("sog","бросков за матч"))}${AHS[p.id].gp?k(mmss(AHS[p.id].avg5),"ИВ, 5 матчей"):""}${AHS[p.id].toi>=3600?k(f1(AHS[p.id].sog60),"бросков за 60 мин"):""}${k(p.blk,T("blk","блоков в сезоне"))}${k(p.hits,T("hits","силовых в сезоне"))}${p.fo>=20?k(pct(p.fop),`вбрасываний (${p.fo})`):""}${p.ppG?k(p.ppG,"голов в большинстве"):""}</div>
+  ${playerAnalysis(p)}
   ${canSwap&&cands.length?`<div class="sec"><h2>Поменять с</h2><div class="swap">${cands.map(({o,loc})=>`<button data-swap="${esc(o.name)}"><span>${o.n} ${esc(SUR(o.name))}</span><small>${loc||"запас"} · ${o.sc}</small></button>`).join("")}</div><p class="note">Замена создаёт «Мой вариант» на основе того состава, который открыт сейчас.</p></div>`:""}
   ${games?`<div class="sec"><h2>Последние матчи</h2><div class="tablewrap"><table><thead><tr><th class="l">Дата</th><th class="l">Соперник</th><th>Счёт</th><th>Г</th><th>П</th><th>ИВ</th><th>Бр</th><th>+/-</th></tr></thead><tbody>${games}</tbody></table></div></div>`:""}
   ${spdBlock(p)}
