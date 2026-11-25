@@ -7,6 +7,7 @@ const path = require('path');
 
 const SEASON = 1436;
 const CACHE = path.join(__dirname, 'league-games.json');
+const CACHE_V = 2; // меняется, когда меняется разбор: старый кэш тогда выбрасывается и всё собирается заново
 const NAMES = { 'Торпедо': 'Торпедо НН', 'Драконы': 'Шанхай Дрэгонс', 'ХК Сочи': 'Сочи' };
 const MON = { 'января': 1, 'февраля': 2, 'марта': 3, 'апреля': 4, 'мая': 5, 'июня': 6, 'июля': 7, 'августа': 8, 'сентября': 9, 'октября': 10, 'ноября': 11, 'декабря': 12 };
 const nm = s => NAMES[s] || s;
@@ -31,14 +32,15 @@ function compact(id, raw, fin) {
   const n = v => { const x = parseFloat(String(v).replace(',', '.')); return isNaN(x) ? 0 : x };
   // голы: счёт по ходу матча, период, кто первый
   const gt = T.find(t => t.cap === 'Заброшенные шайбы');
-  const goals = gt ? gt.rows.slice(1).filter(r => /^\d+:\d+$/.test(r[3] || '')) : [];
+  // победный буллит тоже стоит в этой таблице, но не в периоде 1–4 — его не считаем, он есть в итоговом счёте
+  const goals = gt ? gt.rows.slice(1).filter(r => /^\d+:\d+$/.test(r[3] || '') && /^[1-9]$/.test(r[1] || '')) : [];
   const per = [[0, 0], [0, 0], [0, 0], [0, 0]];
   let ph = 0, pa = 0, fg = 0;
   for (const r of goals) {
     const [sh, sa] = r[3].split(':').map(Number);
     const side = sh > ph ? 0 : 1;
     if (!fg) fg = side === 0 ? 1 : 2;
-    const p = Math.min(4, +r[1] || 4) - 1;
+    const p = Math.min(4, +r[1]) - 1;
     per[p][side]++;
     ph = sh; pa = sa;
   }
@@ -47,10 +49,15 @@ function compact(id, raw, fin) {
   // две таблицы подряд с одной подписью: первая — хозяева, вторая — гости
   const pair = cap => T.filter(t => t.cap === cap).slice(0, 2);
   const total = t => {
-    // строки: заголовок, «первый период», цифры, «второй период», цифры, … — складываем цифры всех периодов
+    // строки: заголовок, «первый период», цифры, «второй период», цифры, … — складываем только цифры под подписью
+    // периода или овертайма (строку «всего» не берём, иначе броски задвоятся)
     if (!t) return null;
     const head = t.rows[0]; const sum = head.map(() => 0); let any = false;
-    for (const r of t.rows.slice(1)) if (r.length === head.length && r.every(c => /^[\d.:,-]*$/.test(c))) { any = true; r.forEach((c, i) => { sum[i] += /:/.test(c) ? (c.split(':')[0] * 60 + +c.split(':')[1]) : n(c) }) }
+    const R = t.rows.slice(1);
+    R.forEach((r, j) => {
+      const lab = j > 0 && R[j - 1].length === 1 ? R[j - 1][0] : '';
+      if (r.length === head.length && r.every(c => /^[\d.:,-]*$/.test(c)) && /период|овертайм/i.test(lab)) { any = true; r.forEach((c, i) => { sum[i] += /:/.test(c) ? (c.split(':')[0] * 60 + +c.split(':')[1]) : n(c) }) }
+    });
     return any ? Object.fromEntries(head.map((k, i) => [k, sum[i]])) : null;
   };
   const shots = pair('Броски по воротам').map(total), act = pair('Командные показатели').map(total);
@@ -130,7 +137,8 @@ async function main() {
   const file = process.argv[2] || 'index.html';
   const dry = process.argv.includes('--dry');
   const mi = process.argv.indexOf('--max'); const MAX = mi > 0 ? +process.argv[mi + 1] : 400;
-  const games = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, 'utf8')) : {};
+  const old = fs.existsSync(CACHE) ? JSON.parse(fs.readFileSync(CACHE, 'utf8')) : {};
+  const games = old.v === CACHE_V ? old.g : {};
   const { chromium } = require('playwright');
   const b = await chromium.launch();
   const p = await b.newPage({ locale: 'ru-RU', userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36', viewport: { width: 1400, height: 900 } });
@@ -160,7 +168,7 @@ async function main() {
   }
   await b.close();
   if (fails.length) console.log('не взял (попробую в следующий раз):\n ' + fails.join('\n '));
-  fs.writeFileSync(CACHE, JSON.stringify(games));
+  fs.writeFileSync(CACHE, JSON.stringify({ v: CACHE_V, g: games })); // кэш сохраняем всегда — следующий запуск догрузит остальное
   const html = fs.readFileSync(file, 'utf8');
   const bad = crossCheck(html, games);
   if (bad.length) { console.log('НЕ СХОДИТСЯ С ТАБЛИЦЕЙ:\n ' + bad.join('\n ')); process.exit(1) }

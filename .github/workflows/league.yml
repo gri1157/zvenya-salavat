@@ -30,8 +30,8 @@ jobs:
         run: |
           cp index.html /tmp/old.html
           node .github/data/league_build.js index.html
-          node .github/data/league_games.js index.html
-          cmp -s index.html /tmp/old.html && { echo "без изменений"; echo "SKIP=1" >> "$GITHUB_ENV"; } || true
+          node .github/data/league_games.js index.html || echo "GAMES_FAIL=1" >> "$GITHUB_ENV"
+          git status --porcelain | grep -q . || { echo "без изменений"; echo "SKIP=1" >> "$GITHUB_ENV"; }
       - name: Защита качества
         if: env.SKIP != '1'
         run: python3 .github/data/diff-report.py /tmp/old.html index.html
@@ -47,3 +47,6 @@ jobs:
           git commit -m "Статистика клубов КХЛ (khl.ru) на $(TZ=Asia/Yekaterinburg date +%F)"
           for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && exit 0; sleep 5; done
           exit 1
+      - name: Протоколы матчей не сошлись
+        if: env.GAMES_FAIL == '1'
+        run: echo "Протоколы матчей лиги собраны не полностью или не сошлись с таблицей — LGM не обновлена, кэш сохранён" && exit 1
