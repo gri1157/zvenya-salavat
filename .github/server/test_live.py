@@ -255,5 +255,28 @@ api._cache["sent"]["2026-11-16live"]["goals"] = ["1:0"]
 state["page"] = page(830).replace("</body>", "<div>Овертайм 2 : 0</div><div>61:10</div><a>Мэттью Маджо</a><b>ГОЛ!</b><span>2 : 0</span></body>")
 got = [m for m in tick(9000) if "ГОЛ" in m]
 expect("гол в овертайме", got, ["🚨 ГОЛ «САЛАВАТА» В ОВЕРТАЙМЕ!\nСалават Юлаев 2:0 Адмирал\n🏒 Мэттью Маджо, 61:10"])
+
+# разбор утром после матча: один раз, с 9:00 по Уфе, ждёт полный протокол до 13:00
+import tempfile, json as _json
+from datetime import datetime as _dt
+tmp = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf8")
+_json.dump({"d": "2026-11-24", "full": False, "text": "📊 Разбор: Салават Юлаев 5:4 Нефтехимик ОТ\nБросков больше у нас: 37:25."}, tmp)
+tmp.close()
+api.RAZBOR = tmp.name
+api._cache["sent"] = {}
+api._cache["groups"] = {}
+api._cache["subs"] = {"1": {"on": True, "goals": True}, "2": {"on": True, "goals": False}}
+api.TOKEN = api.TOKEN or "test"
+msgs.clear()
+at = lambda s: _dt.strptime(s, "%Y-%m-%d %H:%M").replace(tzinfo=api.UFA).timestamp()
+expect("разбор: ночью не шлём", api.razbor_tick(at("2026-11-25 07:00")), False)
+expect("разбор: без протокола игроков ждём до 13:00", api.razbor_tick(at("2026-11-25 10:00")), False)
+expect("разбор: в 13:00 шлём то, что есть", api.razbor_tick(at("2026-11-25 13:01")), True)
+expect("разбор: текст ушёл подписчику «Матча онлайн»", msgs, ["📊 Разбор: Салават Юлаев 5:4 Нефтехимик ОТ\nБросков больше у нас: 37:25."])
+expect("разбор: второй раз не шлём", api.razbor_tick(at("2026-11-25 14:00")), False)
+api._cache["sent"] = {}
+expect("разбор: позавчерашний матч не шлём", api.razbor_tick(at("2026-11-26 13:30")), False)
+_json.dump({"d": "2026-11-24", "full": True, "text": "x"}, open(tmp.name, "w"))
+expect("разбор: полный — шлём с 9 утра", api.razbor_tick(at("2026-11-25 09:05")), True)
 print("ВСЁ В ПОРЯДКЕ" if ok else "ЕСТЬ ОШИБКИ")
 sys.exit(0 if ok else 1)
