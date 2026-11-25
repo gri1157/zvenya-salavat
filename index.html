@@ -1006,7 +1006,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.101.79";
+const APP_VERSION="1.102.80";
 const UPDATED={n:3,date:"25 ноября 2026",table:"25 ноября",after:"матча с Нефтехимиком (24 ноября, 5:4 ОТ)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -1833,6 +1833,7 @@ const TERMS={
  sog:["Броски в створ","Броски, которые долетели до вратаря или стали голом. Броски мимо ворот и заблокированные не считаются.",0],
  blk:["Блоки","Блокированные броски: игрок встал под шайбу и не дал ей долететь до ворот. Особенно важно для защитников.",0],
  hits:["Силовые приёмы","Сколько раз игрок жёстко встретил соперника корпусом в борьбе за шайбу.",0],
+ gkform:["Форма и нагрузка вратаря","% отражённых по матчам и за 5 последних матчей (Allhockey). «В старте» — матчи, где он провёл больше всех времени в воротах. Дни отдыха — от его последнего матча до ближайшего матча команды по календарю. «Против соперника» — его матчи против ближайшего соперника в этом сезоне.",0],
  p60:["Анализ игрока","Очки и броски за 60 минут — результативность с поправкой на время: игрок с 10 минутами и игрок с 20 сравниваются честно. Место — среди игроков той же позиции «Салавата» (не меньше 8 матчей). Время в большинстве и меньшинстве — из протоколов КХЛ. Звено — по последнему составу. Графики — последние 10 матчей, каждый ряд в своём масштабе. «С кем лучше» — голы в равных составах за и против, когда оба игрока были на льду.",0],
  alerts:["Тревоги","Сигналы по официальным цифрам, когда что-то идёт не так. Пороги: нападающий 5+ матчей подряд без очков или на 2+ минуты меньше времени за 5 матчей, чем в сезоне; основной вратарь ниже .900 за 5 матчей или 6+ игр подряд в старте; 3+ поражения подряд; меньшинство за 10 матчей ниже 75% или большинство ниже 15%; удалений за 5 матчей больше, чем у соперников, на 3+; 3-й период в минус в 3 из 5 последних матчей. «Близко к порогу» — до тревоги остался шаг. О новой тревоге бот пишет владельцу в Telegram.",0],
  vs:["Мы — они","Салават и соперник рядом по официальным протоколам КХЛ всех матчей лиги. Полоска делится пропорционально двум числам: зелёная часть — наша, синяя — их. Зелёным выделено число той команды, у которой показатель лучше (для пропущенных, бросков соперника и штрафов лучше меньше). «10 матчей» и «5 матчей» — последние матчи каждой команды. Вбрасывания есть только за сезон. «Главное» — все заметные разницы между командами.",0],
@@ -3273,6 +3274,38 @@ function playerSheetPro(p){
   <div class="sec"><h2>С кем забивает</h2>${partners.length?`<div class="links">${partners.map(x=>`<div class="link"><span>${esc(x.o.name)}</span><b>${x.v}</b></div>`).join("")}</div>`:`<p class="note">В этом сезоне совместных голов нет.</p>`}</div>
   <div class="actions"><button class="btn" data-toggle="${p.id}">${av?"Сделать недоступным":"Сделать доступным"}</button><button class="btn" data-cmpwith="${p.id}">Сравнить с другим</button></div>`;
 }
+// ===== Вратарь: % отражённых по матчам, нагрузка, против ближайшего соперника (Allhockey и календарь)
+function goalieAnalysis(g){
+  const apps=AH.map(a=>{const q=(a[3]||[]).find(x=>x[0]===g.name);if(!q||!(q[2]>0||q[1]>600))return null;const gm=GAMES.find(x=>x.d===a[0]);
+    const main=(a[3]||[]).slice().sort((x,y)=>y[1]-x[1])[0][0]===g.name;return {d:a[0],o:gm?gm.o:"",sec:q[1],sh:q[2],sv:q[3],main,res:gm?gm.r:""}}).filter(Boolean);
+  if(!apps.length)return "";
+  const tot=apps.reduce((s,x)=>s+x.sh,0),svT=apps.reduce((s,x)=>s+x.sv,0),season=tot?svT/tot:0;
+  const l5=apps.slice(-5),s5=l5.reduce((s,x)=>s+x.sh,0),v5=l5.reduce((s,x)=>s+x.sv,0);
+  const team=AH.map(a=>a[0]).sort(),starts=team.slice(-10).filter(d=>apps.some(x=>x.d===d&&x.main)).length;
+  let run=0;for(let j=team.length-1;j>=0;j--){const x=apps.find(y=>y.d===team[j]);if(x&&x.main)run++;else break}
+  const last=apps[apps.length-1],days=d=>Math.round((new Date(d)-new Date(last.d))/864e5);
+  const isLast=last.d===team[team.length-1],nx=upcoming()[0],rest=nx&&isLast?days(nx.d)-1:null,mains=apps.filter(x=>x.main),spg=mains.length?mains.reduce((s,x)=>s+x.sh,0)/mains.length:0;
+  const vs=nx?apps.filter(x=>x.o===nx.o):[],vsh=vs.reduce((s,x)=>s+x.sh,0),vsv=vs.reduce((s,x)=>s+x.sv,0);
+  const k=(v,l)=>`<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
+  const G=apps.slice(-10),lo=.8,h=v=>Math.max(2,Math.round((Math.max(lo,Math.min(1,v))-lo)/(1-lo)*56)),line=h(season);
+  const graph=`<div class="pg"><div class="pgrow"><span class="pglab">% отраж.</span><div class="pgbars" style="position:relative">${season?`<div style="position:absolute;left:0;right:0;bottom:${line+16}px;border-top:1px dashed var(--gold)"></div>`:""}${G.map(x=>{const r=x.sh?x.sv/x.sh:1;return `<div class="pgcol" style="min-height:76px" title="${dShort(x.d)} ${esc(x.o)}"><i style="height:${h(r)}px;background:${r<.9?"var(--bad)":"var(--accent)"};opacity:${x.main?1:.5}"></i><small>${sv3(r).replace(/^\./,"")}</small></div>`}).join("")}</div></div>
+   <div class="pgrow"><span class="pglab">Броски</span><div class="pgbars">${G.map(x=>`<div class="pgcol" style="min-height:0"><small>${x.sh}</small></div>`).join("")}</div></div>
+   <div class="pgrow"><span class="pglab">Число</span><div class="pgbars">${G.map(x=>`<div class="pgcol" style="min-height:0"><small>${+x.d.slice(8)}</small></div>`).join("")}</div></div>
+   <p class="legend">С ${dShort(G[0].d)} по ${dShort(G[G.length-1].d)}. Пунктир — его сезон (${sv3(season)}), шкала от .800, красный — ниже .900, бледный — выходил на замену.</p></div>`;
+  const facts=[];
+  const n5=`${l5.length} ${pl(l5.length,MATCH)}`;
+  if(s5>=40){const r5=v5/s5;facts.push(`За ${n5} ${sv3(r5)} — ${r5<season-.012?"ниже":r5>season+.012?"выше":"на уровне"} его сезона (${sv3(season)}).`)}
+  if(run>=4)facts.push(`${run} ${pl(run,MATCH)} подряд основным вратарём.`);
+  if(!isLast)facts.push(`Последний матч — ${dShort(last.d)}${last.o?` с «${last.o}»`:""}.`);
+  if(rest!=null&&nx)facts.push(`До матча с «${nx.o}» ${dShort(nx.d)} ${rest<=0?"отдыха нет — игра на следующий день":`${rest} ${pl(rest,["день","дня","дней"])} отдыха`}.`);
+  if(vs.length&&vsh)facts.push(`Против «${nx.o}» в этом сезоне: ${vsv} из ${vsh} (${sv3(vsv/vsh)}), ${vs.length} ${pl(vs.length,MATCH)}.`);
+  else if(nx)facts.push(`Против «${nx.o}» в этом сезоне ещё не играл.`);
+  return `<div class="sec"><h2>Форма и нагрузка ${T("gkform","?")}</h2>
+   <div class="kpis">${k(s5?sv3(v5/s5):"—",`% отражённых за ${n5}`)}${k(starts+" из 10","в старте за 10 матчей команды")}${k(run,"матчей подряд в старте")}${k(f1(spg),"бросков за матч")}${rest!=null?k(Math.max(0,rest),"дней отдыха до матча"):""}</div>
+   ${facts.length?`<div class="panel">${facts.map(f=>`<p class="note" style="margin:3px 0">• ${esc(f)}</p>`).join("")}</div>`:""}
+   <h3>${G.length===1?"Последний матч":`Последние ${G.length} ${pl(G.length,MATCH)}`}</h3>${graph}
+   <p class="note">% отражённых в меньшинстве отдельно не публикуется ни в протоколах КХЛ, ни на Allhockey, поэтому его здесь нет.</p></div>`;
+}
 function goalieSheet(g){
   const rows=g.per.map(({k,r})=>`<tr><td class="l">${SLAB[k]}</td><td class="l">${esc(r[0])}</td><td>${r[1]}</td><td>${r[2]??"—"}</td><td>${f1((r[5]/r[4])*100)}%${r[8]?"*":""}</td><td>${f2(r[3]*60/(r[1]*toMin(r[7])))}</td><td>${r[6]}</td></tr>`).join("");
   const st=GINJ[g.name];const trk=GTRK[g.name]||[];
@@ -3281,6 +3314,7 @@ function goalieSheet(g){
   ${st?`<div class="status-line">${esc(st[0][0].toUpperCase()+st[0].slice(1))}: ${esc(st[1])}</div>`:""}
   <div class="kpis"><div class="kpi"><b>${g.has?f1(g.svp*100)+"%":"—"}</b><span>${T("sv","% отражённых")}</span></div><div class="kpi"><b>${g.has?f2(g.gaa):"—"}</b><span>${T("gaa","коэфф. надёжности")}</span></div><div class="kpi"><b>${g.gp}</b><span>матчей</span></div><div class="kpi"><b>${g.so}</b><span>на ноль</span></div>${g.last5?`<div class="kpi"><b>${f1(g.last5.svp*100)}%</b><span>последние ${g.last5.n} матчей</span></div>`:""}</div>
   <p class="legend">Цифры сверху — <b>${seasonLabel()}</b>. По каждому сезону отдельно — в таблице ниже.</p>
+  ${goalieAnalysis(g)}
   ${lg?`<div class="sec"><h2>Последние матчи</h2><div class="links">${lg}</div></div>`:""}
   ${trk.length?`<div class="trk">${trk.map(r=>`<div class="trk-row"><span>${esc(r[0])}</span><b>${esc(r[1])}</b><small>${esc(r[2])} · ${esc(r[3])}</small></div>`).join("")}</div>`:""}
   <div class="tablewrap"><table><thead><tr><th class="l">Сезон</th><th class="l">Клуб</th><th>М</th><th>В</th><th>%ОБ</th><th>КН</th><th>«0»</th></tr></thead><tbody>${rows||`<tr><td class="l" colspan="7">Нет матчей в КХЛ</td></tr>`}</tbody></table></div>
