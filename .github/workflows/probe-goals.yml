@@ -1,0 +1,8 @@
+name: probe goals
+on: { push: { branches: ['probe/goals'] } }
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm init -y >/dev/null && npm install playwright@1.48.2 && npx playwright install --with-deps chromium && node .github/probe/p.js
