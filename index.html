@@ -1002,7 +1002,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.97.75";
+const APP_VERSION="1.98.76";
 const UPDATED={n:3,date:"25 ноября 2026",table:"25 ноября",after:"матча с Нефтехимиком (24 ноября, 5:4 ОТ)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -1527,7 +1527,7 @@ function teamLog(name){
     const h=r[ix.h]===name,s=h?"h":"a",o=h?"a":"h",v=k=>r[ix[s+k]],w=k=>r[ix[o+k]];
     const gf=v("s"),ga=w("s"),x=r[ix.x],fg=r[ix.fg];
     return {d:r[ix.d],opp:h?r[ix.a]:r[ix.h],home:h,gf,ga,x,first:fg?(fg===(h?1:2)?1:-1):0,
-      p3:[v("p3"),w("p3")],sf:v("sh"),sa:w("sh"),ppo:v("ppo"),ppg:v("ppg"),pko:w("ppo"),ppga:w("ppg"),pim:v("pim"),blk:v("blk"),hit:v("hit"),en:v("en"),ena:w("en"),
+      p3:[v("p3"),w("p3")],per:[[v("p1"),w("p1")],[v("p2"),w("p2")],[v("p3"),w("p3")],[v("ot"),w("ot")]],pima:w("pim"),sf:v("sh"),sa:w("sh"),ppo:v("ppo"),ppg:v("ppg"),pko:w("ppo"),ppga:w("ppg"),pim:v("pim"),blk:v("blk"),hit:v("hit"),en:v("en"),ena:w("en"),
       sog:x==="Б"&&gf>ga?1:0,soa:x==="Б"&&ga>gf?1:0};
   });
 }
@@ -1857,7 +1857,7 @@ function renderGames(){const el=document.getElementById("gamesBody");if(!el)retu
   const up=upcoming().slice(0,8);
   const upRows=up.map(x=>`<div class="lf cal"><span class="n">${dShort(x.d)}</span><span class="t">${esc(x.o)} <span>· ${x.h?"дома":"в гостях"}</span></span><b>${x.t?ufaT(x.t):""}</b><small>${wday(x.d)}${x.t?", время уфимское":""}</small></div>`).join("");
   const res=GAMES.slice(-10).reverse().map(g=>`<div class="lf gmw"><span class="t">${esc(g.o)} <span>· ${g.h?"дома":"в гостях"}</span></span><b>${g.gf}:${g.ga}${g.x?" "+g.x:""}</b><span class="res ${g.r==="W"?"W":"L"}" data-tr="wl">${g.r==="W"?"В":"П"}</span><small>${dLong(g.d)}, ${wday(g.d)}</small></div>`).join("");
-  el.innerHTML=`${nextCard()}<div class="grid3">
+  el.innerHTML=`${razborHTML()}${nextCard()}<div class="grid3">
    <div class="tile"><span>Сыграно матчей</span><b>${GAMES.length}</b></div>
    <div class="tile"><span>Победы</span><b>${W.length}</b>${wx?`<small>из них ${wx} в овертайме или по буллитам</small>`:""}</div>
    <div class="tile"><span>Поражения</span><b>${Ls.length}</b>${lx?`<small>из них ${lx} в овертайме или по буллитам</small>`:""}</div>
@@ -1955,7 +1955,7 @@ function render(){
 
 // ===== ДЛЯ ТРЕНЕРА: план на матч, календарь и вратари, время и броски =====
 let planIdx=0,SIMP=null,PLANX=null,toiSort="avg",toiF="all";
-const okView=h=>{if(UI==="lite")return LITE_V.includes(h)?h:"game";if(ROLE==="gm")return "gm";if(ROLE==="agent")return "agent";return (VIEWS.includes(h)&&!["game","games","table","gm","agent"].includes(h))?h:"board"};
+const okView=h=>{if(h==="razbor")return UI==="lite"?"games":"toi";if(UI==="lite")return LITE_V.includes(h)?h:"game";if(ROLE==="gm")return "gm";if(ROLE==="agent")return "agent";return (VIEWS.includes(h)&&!["game","games","table","gm","agent"].includes(h))?h:"board"};
 const curView=()=>okView(location.hash.replace("#",""));
 function renderLazy(){const v=curView();if(v==="game")renderGame();else if(v==="games")renderGames();else if(v==="table")renderStand();else if(v==="plan")renderPlan();else if(v==="sched")renderSched();else if(v==="toi")renderToi();else if(v==="gm")renderGM();else if(v==="agent")renderAgent();else if(v==="method"){renderChecks();renderFcl()}else if(v==="leaders")renderLeaders()}
 const kmS=n=>n.toLocaleString("ru-RU");
@@ -2114,6 +2114,70 @@ function renderSched(){
    <p class="note">Время на льду по протоколам Allhockey. Красным отмечены те, кто последние три матча играет заметно больше обычного.</p></div>`;
 }
 // ----- время на льду и броски
+// ===== Разбор матча: все сработавшие выводы по официальным цифрам (протоколы khl.ru, Allhockey, KHL-скорость).
+// Тот же текст (razborTG) уходит утром в Telegram: .github/data/razbor_export.js кладёт его в razbor.json, сервер рассылает.
+let razD="";
+function razDates(){const s=new Set(GAMES.map(g=>g.d));teamLog("Салават Юлаев").forEach(x=>s.add(x.d));return [...s].sort().reverse()}
+function razbor(d){
+  const L=teamLog("Салават Юлаев"),g=GAMES.find(x=>x.d===d),lg=L.find(x=>x.d===d),a=AHBY[d],kp=typeof KP!=="undefined"&&KP[d]?KP[d]:null;
+  if(!g&&!lg)return null;
+  const opp=g?g.o:lg.opp,home=g?!!g.h:lg.home,gf=g?g.gf:lg.gf,ga=g?g.ga:lg.ga,x=(g?g.x:lg.x)||"",won=gf>ga;
+  const nm=id=>id>=0&&P[id]?SUR(P[id].name):"";
+  const sf=a?a[1]:lg?lg.sf:null,sa=a?a[2]:lg?lg.sa:null,sog=x==="Б"&&won?1:0;
+  const ev=g?g.g:[],our=t=>ev.filter(e=>e[0]===1&&e[1]===t),their=t=>ev.filter(e=>e[0]===0&&e[1]===t);
+  const ppo=g?g.pf:lg.ppo,ppg=g?our("pp").length:lg.ppg,pko=g?g.pa:lg.pko,ppga=g?their("pp").length:lg.ppga;
+  const per=g&&ev.length?[1,2,3,4].map(p=>[ev.filter(e=>e[5]===p&&e[0]===1).length,ev.filter(e=>e[5]===p&&e[0]===0).length]):lg?lg.per:null;
+  const first=g&&ev.length?(ev[0][0]===1?1:-1):lg?lg.first:0;
+  const S=typeof LTS!=="undefined"&&LTS.t?LTS.t["Салават Юлаев"]:null,Agg=teamAgg(L.filter(y=>y.d<=d));
+  const sPP=S&&S.ppo?S.ppg/S.ppo*100:Agg?Agg.pp:0,sShp=S&&S.sf?S.gf/S.sf*100:Agg?Agg.shp:0;
+  const cmp=(v,base,thr)=>v-base>=thr?"выше":base-v>=thr?"ниже":"на уровне";
+  const title=`${res3(won,x)} ${home?"дома":"в гостях"}: ${home?`Салават Юлаев ${gf}:${ga} ${opp}`:`${opp} ${ga}:${gf} Салават Юлаев`}`;
+  const kv=[],lines=[];
+  if(sf!=null&&sa!=null){kv.push(["Броски",`${sf} : ${sa}`]);
+    lines.push(sf===sa?`Броски поровну: ${sf}:${sa}.`:`Бросков больше ${sf>sa?"у нас":"у соперника"}: ${sf}:${sa}.`);
+    if(sf){const r=(gf-sog)/sf*100;kv.push(["Реализация",`${f1(r)}%`,`сезон ${f1(sShp)}%`]);lines.push(`Реализация ${f1(r)}% — ${cmp(r,sShp,3)} сезона (${f1(sShp)}%).`)}}
+  if(ppo!=null){kv.push(["Большинство",`${ppg} из ${ppo}`]);lines.push(ppo?`Большинство ${ppg} из ${ppo}${ppg?` (${f1(ppg/ppo*100)}%)`:""} — ${cmp(ppg/ppo*100,sPP,8)} сезона (${f1(sPP)}%).`:"Большинства не было.")}
+  if(pko!=null){kv.push(["Меньшинство",`${pko-ppga} из ${pko}`]);if(pko)lines.push(`Меньшинство: ${ppga?`пропустили ${ppga} из ${pko}`:`отбились во всех ${pko}`}.`)}
+  const gks=a?a[3].filter(q=>q[2]>0):g&&g.gk?[[g.gk[0],0,g.gk[1],g.gk[2]]]:[];
+  for(const [n,,sh,sv] of gks){const all=AH.filter(z=>z[0]<=d).flatMap(z=>z[3]).filter(q=>q[0]===n),ts=all.reduce((s,q)=>s+q[2],0),tv=all.reduce((s,q)=>s+q[3],0);
+    const r=sv/sh,sr=ts?tv/ts:0;kv.push([SUR(n),sv3(r),`${sv} из ${sh}`]);if(gks.length===1||sh>=10)lines.push(`${SUR(n)}: ${sv} ${pl(sv,["сэйв","сэйва","сэйвов"])} из ${sh} (${sv3(r)}) — ${cmp(r*1000,sr*1000,15)} его сезона (${sv3(sr)}).`)}
+  if(!gks.length&&lg&&lg.sa){const r=(lg.sa-(ga-lg.ena-(x==="Б"&&!won?1:0)))/lg.sa,sr=Agg?Agg.sv/100:0;kv.push(["Отражения",sv3(r),"команда"]);lines.push(`Отражено ${sv3(r)} бросков — ${cmp(r*1000,sr*1000,15)} сезона (${sv3(sr)}).`)}
+  if(first){const sameF=L.filter(y=>y.d<=d&&y.first===first),wF=sameF.filter(y=>y.gf>y.ga).length;
+    kv.push(["Первый гол",first===1?"наш":"соперника"]);
+    lines.push(first===1?(won?`Забили первыми — ${wF}-я победа из ${sameF.length} в таких матчах.`:`Забили первыми, но проиграли: в таких матчах ${wF} побед из ${sameF.length}.`)
+      :(won?`Отыгрались после пропущенного первым — ${wF}-я такая победа из ${sameF.length}.`:`Пропустили первыми — в таких матчах ${wF} побед из ${sameF.length}.`))}
+  if(per){kv.push(["Периоды",per.slice(0,3).map(q=>q.join(":")).join(" "),x?`ОТ ${per[3].join(":")}${x==="Б"?", буллиты":""}`:""]);
+    const p3=per[2];if(p3[0]!==p3[1])lines.push(`3-й период ${p3[0]}:${p3[1]} — ${p3[0]>p3[1]?"выиграли":"проиграли"}.`);
+    if(x==="ОТ"){const w=ev.filter(e=>e[5]===4).pop();lines.push(`${won?"Победа":"Поражение"} в овертайме${w&&w[0]===1&&nm(w[2])?`, победный гол забил ${nm(w[2])}`:""}.`)}
+    if(x==="Б")lines.push(`${won?"Победа":"Поражение"} по буллитам.`)}
+  for(const e of our("sh"))if(nm(e[2]))lines.push(`Гол в меньшинстве — ${nm(e[2])}.`);
+  for(const e of our("en"))if(nm(e[2]))lines.push(`Гол в пустые ворота — ${nm(e[2])}.`);
+  if(g&&ev.length){const pts={};for(const e of ev)if(e[0]===1){if(e[2]>=0)(pts[e[2]]=pts[e[2]]||[0,0])[0]++;for(const i of [e[3],e[4]])if(i>=0)(pts[i]=pts[i]||[0,0])[1]++}
+    const top=Object.entries(pts).sort((p,q)=>(q[1][0]+q[1][1])-(p[1][0]+p[1][1])||q[1][0]-p[1][0]).filter(([,v])=>v[0]+v[1]>=2);
+    if(top.length)lines.push(`Очки: ${top.map(([i,v])=>`${nm(+i)} ${v[0]}+${v[1]}`).join(", ")}.`)}
+  if(a&&a[4]&&a[4].length){const pl4=a[4],mx=k=>pl4.slice().sort((p,q)=>q[k]-p[k])[0];
+    const t=mx(1),sh=mx(3),pm=mx(2);lines.push(`Больше всех времени — ${nm(t[0])} ${mmss(t[1])}.`);
+    if(sh[3]>=4)lines.push(`Больше всех бросков — ${nm(sh[0])} (${sh[3]}).`);if(pm[2]>=2)lines.push(`Лучший плюс-минус — ${nm(pm[0])} (+${pm[2]}).`)}
+  else lines.push("Протокол игроков ещё не внесён: время, броски и плюс-минус по игрокам появятся после обновления данных.");
+  if(kp){const f=kp.filter(r=>r[10]>0&&r[8]>0).sort((p,q)=>q[8]-p[8])[0];if(f)lines.push(`Быстрее всех — ${nm(f[0])}: ${f1(f[8])} км/ч в среднем, ${f1(f[10])} км за матч.`)}
+  if(lg&&Agg){if(lg.pim!=null)lines.push(`Штрафные минуты ${lg.pim}:${lg.pima}.`);
+    if(lg.blk!=null)lines.push(`Блоков ${lg.blk} (в среднем ${f1(Agg.blk)}), силовых ${lg.hit} (в среднем ${f1(Agg.hit)}).`)}
+  const tgTitle=`📊 Разбор: ${home?`Салават Юлаев ${gf}:${ga} ${opp}`:`${opp} ${ga}:${gf} Салават Юлаев`}${x?" "+x:""}`;
+  const tg=[tgTitle,...lines.filter(l=>!/^Протокол игроков/.test(l)).slice(0,9)].join("\n");
+  return {d,title,kv,lines,tg};
+}
+const res3=(won,x)=>won?(x?`Победа (${x})`:"Победа"):(x?`Поражение (${x})`:"Поражение");
+const sv3=r=>r>=1?"1.000":"."+String(Math.round(r*1000)).padStart(3,"0");
+function razborTG(d){const r=razbor(d||razDates()[0]);if(!r)return null;const a=AHBY[r.d];return {d:r.d,text:r.tg,full:!!(GAMES.find(x=>x.d===r.d)&&a&&a[4]&&a[4].length)}}
+function razborHTML(){
+  const ds=razDates();if(!ds.length)return "";if(!ds.includes(razD))razD=ds[0];
+  const r=razbor(razD);if(!r)return "";
+  return `<div class="sec" id="razSec"><div class="sec-head"><h2>Разбор матча</h2><label class="eyebrow">матч <select id="razSel">${ds.map(d=>{const g=GAMES.find(x=>x.d===d),l=teamLog("Салават Юлаев").find(x=>x.d===d);return `<option value="${d}"${d===razD?" selected":""}>${dShort(d)} · ${esc(g?g.o:l?l.opp:"")}</option>`}).join("")}</select></label></div>
+   <p style="margin:4px 0 10px;font-weight:700">${esc(r.title)}</p>
+   <div class="kpis">${r.kv.map(([k,v,sm])=>`<div class="tile"><span>${esc(k)}</span><b style="font-size:15px">${esc(v)}</b>${sm?`<small>${esc(sm)}</small>`:""}</div>`).join("")}</div>
+   <div class="panel"><h3>Почему так вышло</h3>${r.lines.map(l=>`<p class="note" style="margin:4px 0">• ${esc(l)}</p>`).join("")}</div>
+   <p class="note">По официальным протоколам: khl.ru (броски, большинство, штрафы, блоки, силовые, скорость), Allhockey (время и броски игроков). Этот же разбор утром после матча приходит в Telegram.</p></div>`;
+}
 function renderToi(){
   const el=document.getElementById("toiBody");if(!el||!STATE.LU)return;const A=TS.all,L=TS.l10;
   const tile=(l,v,s)=>`<div class="tile"><span>${l}</span><b>${v}</b><small>${s}</small></div>`;const pdo=x=>(x.sh+x.sv)*100;
@@ -2133,7 +2197,7 @@ function renderToi(){
   const avgT=[SLOT.f.map((x,i)=>x?`${i+1}-е звено ≈${mmss(x)}`:"").filter(Boolean).join(", "),SLOT.d.map((x,i)=>x?`${i+1}-я пара ≈${mmss(x)}`:"").filter(Boolean).join(", ")].filter(Boolean).join("; ");
   const gRows=[...GAMES].reverse().filter(g=>g.sf!=null).map(g=>{const s=g.sf/((g.sf+g.sa)||1);return `<tr><td class="l">${dShort(g.d)}</td><td class="l">${g.h?"":"@ "}${esc(g.o)}</td><td><b>${g.sf}:${g.sa}</b></td><td class="l" style="min-width:90px"><div class="sbar" role="img" aria-label="наши ${pct(s)}"><i style="width:${(s*100).toFixed(1)}%"></i><i class="o" style="width:${((1-s)*100).toFixed(1)}%"></i></div></td><td>${g.gf}:${g.ga}${g.x?" "+g.x:""}</td><td class="l"><span class="${g.r==="W"?"good":"bad"}">${g.r==="W"?"победа":"поражение"}</span></td></tr>`}).join("");
   const nAH=AH.filter(a=>a[4]).length;
-  el.innerHTML=`
+  el.innerHTML=`${razborHTML()}
   <div class="sec"><div class="sec-head"><h2>Броски команды</h2><span class="eyebrow">${A.n} ${pl(A.n,MATCH)} · Allhockey</span></div><div class="grid3">${tiles}</div>
    <p class="note">Доля бросков: наши броски от всех бросков в матче. PDO: реализация плюс % отражений. Заметно выше 100 обычно значит, что команде везёт, ниже 100 — что не везёт.</p></div>
   <div class="sec"><div class="sec-head"><h2>Время и броски игроков</h2><span class="eyebrow">2026/27 · ${nAH} ${pl(nAH,MATCH)}</span></div>
@@ -3150,7 +3214,7 @@ document.addEventListener("click",async e=>{
   const pb=e.target.closest("[data-id]");if(pb&&(pb.classList.contains("slot")||pb.classList.contains("chip")||pb.classList.contains("nm"))){openSheet(playerSheet(P[+pb.dataset.id]));return}
   const sb=e.target.closest("[data-sort]");if(sb){const k=sb.dataset.sort;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=["name","pos","hand","n","st"].includes(k)?1:-1}renderTable();return}
 });
-document.addEventListener("change",e=>{if(e.target.id==="rivSel"){rivalName=e.target.value;const rr=RIVALS.find(x=>x.name===rivalName);if(rr)rivalHome=rr.home;renderRival();return}const c=e.target.closest("[data-on]");if(c){OV[P[+c.dataset.on].name]=c.checked;render();return}if(e.target.id==="cmpA"||e.target.id==="cmpB")renderCompare()});
+document.addEventListener("change",e=>{if(e.target.id==="razSel"){razD=e.target.value;const v=curView();if(v==="games")renderGames();else renderToi();return}if(e.target.id==="rivSel"){rivalName=e.target.value;const rr=RIVALS.find(x=>x.name===rivalName);if(rr)rivalHome=rr.home;renderRival();return}const c=e.target.closest("[data-on]");if(c){OV[P[+c.dataset.on].name]=c.checked;render();return}if(e.target.id==="cmpA"||e.target.id==="cmpB")renderCompare()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!sheet.hidden)closeSheet();if(e.key==="Enter"&&e.target.id==="codeIn"){const b=document.querySelector('[data-act="loadcode"]');b&&b.click()}});
 document.getElementById("shareBtn").addEventListener("click",shareSheet);
 document.getElementById("openCode").addEventListener("click",codeSheet);
@@ -3524,7 +3588,7 @@ function gShare(){const nx=gameNext();const pk=nx&&GMINE&&GMINE.picks&&GMINE.pic
   tgShare(`🏒 Мой прогноз на матч: ${sc}${top?`\nПервое звено: ${top}`:""}${pk.g?`\nВ воротах: ${SUR(pk.g)}`:""}${pk.a?`\nМой игрок: ${SUR(pk.a)}`:""}\nА ты как думаешь? Сделай свой прогноз в «Звеньях Салавата» 👇`,tgLink("game"))}
 if(TG){setTimeout(()=>{const sp=(TG.initDataUnsafe||{}).start_param||"";if(!/^L[a-z0-9]{6}$/.test(sp))leaguesLoad();
   if(/^L[a-z0-9]{6}$/.test(sp))tgApi("POST","/league/join",{id:sp.slice(1)}).then(j=>{GLEAGUES=j.leagues||GLEAGUES;GLEAGUE=sp.slice(1);const l=GLEAGUES.find(x=>x.id===GLEAGUE);toast(l?`Ты в лиге «${l.name}»`:"Ты в лиге");hap("success");location.hash="#game";leaguesLoad()}).catch(err=>{toast(err.message||"Лига не найдена");leaguesLoad()});
-  else if(sp==="game")location.hash="#game"},300)}
+  else if(sp==="game")location.hash="#game";else if(sp==="razbor")location.hash="#razbor"},300)}
 
 /* ===== подсказка прокрутки вбок у таблиц и панели ===== */
 (function(){const mark=el=>{const more=el.scrollWidth-el.clientWidth;el.classList.toggle("more-r",more-el.scrollLeft>6);el.classList.toggle("more-l",el.scrollLeft>6)};

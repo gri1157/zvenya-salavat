@@ -1,0 +1,36 @@
+name: Разбор матча для Telegram
+
+# Без ИИ: когда в main обновилось приложение (например, сборщик внёс протокол матча), заново берёт текст
+# «Разбора матча» из самого приложения и кладёт в .github/data/razbor.json. Сервер бота читает этот файл
+# и утром после матча один раз рассылает разбор подписчикам «Матча онлайн».
+on:
+  push:
+    branches: [main]
+    paths: ['index.html']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: { group: razbor, cancel-in-progress: false }
+
+jobs:
+  razbor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm init -y >/dev/null && npm install playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: Разбор
+        run: node .github/data/razbor_export.js index.html
+      - name: Сохранить
+        run: |
+          git diff --quiet -- .github/data/razbor.json && { echo "без изменений"; exit 0; }
+          git config user.name "Claude"
+          git config user.email "noreply@anthropic.com"
+          git add .github/data/razbor.json
+          git commit -m "Разбор матча для Telegram"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push -q origin HEAD:main && exit 0; sleep 5; done
+          exit 1

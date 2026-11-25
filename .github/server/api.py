@@ -32,6 +32,8 @@ import urllib.request
 TOKEN = os.environ.get("BOT_TOKEN", "").strip()
 DATA = os.environ.get("ZV_DATA", "/opt/zvenya/data")
 PAGE = os.environ.get("ZV_PAGE", "/opt/zvenya/repo/index.html")
+# разбор последнего матча: готовит GitHub (.github/data/razbor_export.js) из самого приложения
+RAZBOR = os.environ.get("ZV_RAZBOR", os.path.join(os.path.dirname(PAGE), ".github", "data", "razbor.json"))
 RESULTS = os.environ.get("ZV_RESULTS", os.path.join(os.path.dirname(PAGE), ".github/data/results.json"))
 PORT = int(os.environ.get("ZV_PORT", "18787"))
 GDEAD = 600  # приём прогнозов закрывается за 10 минут до начала, секунд
@@ -541,7 +543,44 @@ def reminders():
             announce()
         except Exception as e:
             print("итоги:", e, file=sys.stderr)
+        try:
+            razbor_tick(time.time())
+        except Exception as e:
+            print("разбор:", e, file=sys.stderr)
         time.sleep(60)
+
+
+def razbor_tick(now):
+    """Утром после матча — разбор в Telegram (тем, у кого включён «Матч онлайн», и в чаты болельщиков).
+    Только вчерашний или сегодняшний матч, с 9:00 до 22:00 по Уфе. Ждёт полный протокол игроков до 13:00,
+    потом шлёт то, что есть. Один раз на матч."""
+    if not TOKEN:
+        return False
+    try:
+        with open(RAZBOR, encoding="utf8") as f:
+            r = json.load(f)
+    except (FileNotFoundError, ValueError):
+        return False
+    d, text = r.get("d"), r.get("text")
+    if not d or not text:
+        return False
+    t = datetime.fromtimestamp(now, UFA)
+    try:
+        age = (t.date() - datetime.strptime(d, "%Y-%m-%d").date()).days
+    except ValueError:
+        return False
+    if age < 0 or age > 1 or t.hour < 9 or t.hour >= 22 or (not r.get("full") and t.hour < 13):
+        return False
+    sent = load("sent")
+    key = d + "razbor"
+    if sent.get(key):
+        return False
+    with LOCK:
+        sent[key] = int(now)
+        save("sent")
+    push(text, groups=False, reply_markup=kb("📊 Открыть разбор", "#razbor"))
+    group_push(text, reply_markup=kb_url("📊 Открыть разбор", "razbor"))
+    return True
 
 
 # ---------- псевдонимы: в открытой выдаче для GitHub нет ни id, ни имён
