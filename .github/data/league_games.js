@@ -33,7 +33,8 @@ function compact(id, raw, fin) {
   // голы: счёт по ходу матча, период, кто первый
   const gt = T.find(t => t.cap === 'Заброшенные шайбы');
   // победный буллит тоже стоит в этой таблице, но не в периоде 1–4 — его не считаем, он есть в итоговом счёте
-  const goals = gt ? gt.rows.slice(1).filter(r => /^\d+:\d+$/.test(r[3] || '') && /^[1-9]$/.test(r[1] || '')) : [];
+  // (у него номер периода 5 или время от 65:00 — овертайм в регулярке 5 минут)
+  const goals = gt ? gt.rows.slice(1).filter(r => /^\d+:\d+$/.test(r[3] || '') && /^[1-4]$/.test(r[1] || '') && parseInt(r[2], 10) < 65) : [];
   const per = [[0, 0], [0, 0], [0, 0], [0, 0]];
   let ph = 0, pa = 0, fg = 0;
   for (const r of goals) {
@@ -127,7 +128,9 @@ function crossCheck(html, games) {
     // голы в таблице считают победный буллит, в протоколе его нет — допускаем разницу на число побед по буллитам
     if (o.gf > x.gf || x.gf - o.gf > x.sow || o.ga > x.ga || x.ga - o.ga > x.sol) bad.push(`${t}: голы ${o.gf}:${o.ga} ≠ таблица ${x.gf}:${x.ga}`);
     if (o.ppo !== x.ppo || o.ppg !== x.ppg) bad.push(`${t}: большинство ${o.ppg}/${o.ppo} ≠ таблица ${x.ppg}/${x.ppo}`);
-    if (Math.abs(o.sf - x.sf) > 2) bad.push(`${t}: броски ${o.sf} ≠ таблица ${x.sf}`);
+    // броски на сайте иногда правят задним числом в одной таблице и не правят в другой: до 1% разницы — только предупреждение
+    if (Math.abs(o.sf - x.sf) > Math.max(3, x.sf * 0.01)) bad.push(`${t}: броски ${o.sf} ≠ таблица ${x.sf}`);
+    else if (o.sf !== x.sf) console.log(`внимание: ${t}: броски по протоколам ${o.sf}, в таблице ${x.sf}`);
     if (o.pim !== x.pim) console.log(`внимание: ${t}: штрафные минуты ${o.pim} ≠ таблица ${x.pim}`);
   }
   return bad;
