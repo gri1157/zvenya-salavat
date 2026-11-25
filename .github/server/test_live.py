@@ -278,5 +278,19 @@ api._cache["sent"] = {}
 expect("разбор: позавчерашний матч не шлём", api.razbor_tick(at("2026-11-26 13:30")), False)
 _json.dump({"d": "2026-11-24", "full": True, "text": "x"}, open(tmp.name, "w"))
 expect("разбор: полный — шлём с 9 утра", api.razbor_tick(at("2026-11-25 09:05")), True)
+
+# тревоги: владельцу, один раз на серию
+tmp2 = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf8")
+_json.dump({"d": "2026-11-24", "items": [{"k": "gksv:Семен Вязовой:2026-11-24", "text": "Вязовой: .883 отражённых за 5 матчей (порог .900)."}]}, tmp2)
+tmp2.close()
+api.ALERTS = tmp2.name
+api._cache["sent"] = {}
+api._cache["owner"] = {"id": "1"}
+to = []
+api.tg = lambda method, **kw: (to.append((kw.get("chat_id"), kw.get("text"))), {"ok": True})[1]
+expect("тревоги: ночью не пишем", api.alerts_tick(at("2026-11-25 06:00")), False)
+expect("тревоги: днём — владельцу", api.alerts_tick(at("2026-11-25 10:00")), True)
+expect("тревоги: текст", to, [(1, "⚠ Тревоги «Звеньев Салавата»\n• Вязовой: .883 отражённых за 5 матчей (порог .900).")])
+expect("тревоги: та же серия — второй раз не пишем", api.alerts_tick(at("2026-11-25 11:00")), False)
 print("ВСЁ В ПОРЯДКЕ" if ok else "ЕСТЬ ОШИБКИ")
 sys.exit(0 if ok else 1)

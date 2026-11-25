@@ -158,6 +158,7 @@ select,input[type=text]{font:500 14px var(--body);padding:8px 10px;border-radius
 .trk-row b{font-variant-numeric:tabular-nums;text-align:right}
 .trk-row small{grid-column:1/-1;color:var(--muted);font-size:12px}
 .bar{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.alert{margin:6px 0;padding:10px 12px;border-radius:10px;font-size:14px}.alert.bad{background:color-mix(in srgb,var(--bad) 14%,var(--bg));color:var(--fg)}.alert.warn{background:color-mix(in srgb,var(--gold) 16%,var(--bg))}.alert.ok{background:var(--sunk)}
 .vshead{display:flex;justify-content:space-between;gap:8px;font-size:14px;margin:10px 0 4px}.vshead span{font-size:12px;color:var(--muted)}
 .vsrow{display:grid;grid-template-columns:52px 1fr 52px;gap:4px 8px;align-items:center;margin:8px 0;font-variant-numeric:tabular-nums}
 .vsrow b{font-size:15px}.vsrow b:last-child{text-align:right}.vsrow b.good{color:var(--good)}
@@ -764,6 +765,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
   <!-- ФОРМА -->
   <section class="view" id="v-form" aria-label="Форма" hidden>
     <div class="pro-fresh" aria-live="polite"></div>
+    <div class="sec" id="alertSec"></div>
     <div class="sec">
       <div class="sec-head"><h2>Команда</h2><span class="eyebrow" id="teamRec"></span></div>
       <div class="strip" id="strip"></div>
@@ -1002,7 +1004,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.98.76";
+const APP_VERSION="1.99.77";
 const UPDATED={n:3,date:"25 ноября 2026",table:"25 ноября",after:"матча с Нефтехимиком (24 ноября, 5:4 ОТ)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -1657,7 +1659,59 @@ function rivalDetails(R){
 function ppStats(gs){const ppg=gs.reduce((s,g)=>s+g.g.filter(e=>e[0]&&e[1]==="pp").length,0),pf=gs.reduce((s,g)=>s+g.pf,0);
   const ppa=gs.reduce((s,g)=>s+g.g.filter(e=>!e[0]&&e[1]==="pp").length,0),pa=gs.reduce((s,g)=>s+g.pa,0);
   return {ppg,pf,ppa,pa,pp:pf?ppg/pf:0,pk:pa?1-ppa/pa:0}}
+// ===== Тревоги: правила с порогами по официальным цифрам. Те же тревоги GitHub выгружает в alerts.json,
+// сервер бота пишет о новых владельцу в Telegram (один раз на каждую серию).
+const ALERT_RULES=[["Игрок в спаде","нападающий 5+ матчей подряд без очков, или время на льду за 5 матчей на 2+ мин ниже его сезона"],
+ ["Вратарь проседает","% отражённых за 5 матчей ниже .900, или 6+ игр подряд без отдыха"],["Серия команды","3+ поражения подряд"],
+ ["Спецбригады","меньшинство за 10 матчей ниже 75% или большинство ниже 15%"],["Дисциплина","удалений за 5 матчей больше, чем у соперников, на 3+"],
+ ["Концовки","3-й период в минус в 3 из последних 5 матчей"]];
+function plog(upto){ // по игроку: матчи (дата, время, очки) до даты включительно
+  const L={};for(const a of AH){if(a[0]>upto)continue;const g=GAMES.find(x=>x.d===a[0]);const pts={};
+    if(g)for(const e of g.g)if(e[0]===1)for(const i of [e[2],e[3],e[4]])if(i>=0)pts[i]=(pts[i]||0)+1;
+    for(const r of a[4]||[])(L[r[0]]=L[r[0]]||[]).push({d:a[0],t:r[1],p:pts[r[0]]||0})}
+  for(const k in L)L[k].sort((x,y)=>x.d.localeCompare(y.d));return L}
+function alertsAt(upto){
+  const out={},near=[],TL=teamLog("Салават Юлаев").filter(x=>x.d<=upto),last=AH.filter(a=>a[0]<=upto).pop();
+  const add=(k,sev,text)=>{out[k]={k,sev,text}};
+  // игроки — только те, кто играл в последнем матче
+  if(last){const L=plog(upto),played=new Set((last[4]||[]).map(r=>r[0]));
+    for(const id of played){const p=P[id],l=L[id]||[];if(!p||!l.length)continue;
+      if(p.pos==="F"){let k=0;for(let j=l.length-1;j>=0&&l[j].p===0;j--)k++;
+        if(k>=5)add("slump:"+id,"bad",`${SUR(p.name)}: ${k} ${pl(k,MATCH)} подряд без очков.`);else if(k===4)near.push(`${SUR(p.name)}: 4 матча подряд без очков.`)}
+      if(l.length>=10){const all=l.reduce((s,x)=>s+x.t,0)/l.length,l5=l.slice(-5).reduce((s,x)=>s+x.t,0)/5;
+        if(all-l5>=120)add("toi:"+id,"warn",`${SUR(p.name)}: за 5 матчей ${mmss(l5)} на льду — на ${mmss(all-l5)} меньше его сезона (${mmss(all)}).`)}}}
+  // вратари
+  const gs=AH.filter(a=>a[0]<=upto).map(a=>({d:a[0],q:(a[3]||[]).slice().sort((x,y)=>y[1]-x[1])}));
+  if(gs.length){const main=gs[gs.length-1].q[0];if(main){const n=main[0],mine=gs.filter(x=>x.q.some(q=>q[0]===n)).slice(-5).flatMap(x=>x.q.filter(q=>q[0]===n));
+    const sh=mine.reduce((s,q)=>s+q[2],0),sv=mine.reduce((s,q)=>s+q[3],0);
+    if(sh>=60){const r=sv/sh;if(r<.9)add("gksv:"+n,"bad",`${SUR(n)}: ${sv3(r)} отражённых за 5 матчей (порог .900).`);else if(r<.91)near.push(`${SUR(n)}: ${sv3(r)} за 5 матчей — близко к порогу .900.`)}
+    let run=0;for(let j=gs.length-1;j>=0&&gs[j].q[0]&&gs[j].q[0][0]===n;j--)run++;
+    if(run>=6)add("gkrun:"+n,"warn",`${SUR(n)}: ${run}-й матч подряд основным вратарём, без отдыха.`);else if(run===5)near.push(`${SUR(n)}: 5 матчей подряд основным вратарём.`)}}
+  if(TL.length){let k=0;for(let j=TL.length-1;j>=0&&TL[j].gf<TL[j].ga;j--)k++;
+    if(k>=3)add("lose","bad",`${k} ${pl(k,LOSS)} подряд.`);else if(k===2)near.push("2 поражения подряд.");
+    const t10=teamAgg(TL.slice(-10));
+    if(t10){if(t10.pk<75)add("pk","bad",`Меньшинство за 10 матчей ${f1(t10.pk)}% (порог 75%).`);else if(t10.pk<78)near.push(`Меньшинство за 10 матчей ${f1(t10.pk)}% — близко к порогу 75%.`);
+      if(t10.pp<15)add("pp","bad",`Большинство за 10 матчей ${f1(t10.pp)}% (порог 15%).`);else if(t10.pp<18)near.push(`Большинство за 10 матчей ${f1(t10.pp)}% — близко к порогу 15%.`)}
+    const t5=TL.slice(-5),ours=t5.reduce((s,x)=>s+x.pko,0),their=t5.reduce((s,x)=>s+x.ppo,0);
+    if(ours-their>=3)add("pen","warn",`Удалений за 5 матчей ${ours} против ${their} у соперников.`);else if(ours-their===2)near.push(`Удалений за 5 матчей ${ours} против ${their} у соперников.`);
+    const p3m=t5.filter(x=>x.p3[0]<x.p3[1]).length,p3d=t5.reduce((s,x)=>s+x.p3[0]-x.p3[1],0);
+    if(p3m>=3)add("p3","warn",`3-й период в минус в ${p3m} из 5 последних матчей (${p3d>0?"+":""}${p3d}).`);else if(p3m===2)near.push("3-й период в минус в 2 из 5 последних матчей.")}
+  return {out,near}}
+function alertsNow(){
+  const dates=[...new Set([...AH.map(a=>a[0]),...teamLog("Салават Юлаев").map(x=>x.d)])].sort();if(!dates.length)return {items:[],near:[],d:""};
+  const d=dates[dates.length-1],now=alertsAt(d),items=Object.values(now.out);
+  // с какого матча тревога горит без перерыва — по этой дате бот понимает, что это та же серия
+  for(const it of items){let since=d;for(let j=dates.length-2;j>=0;j--){if(alertsAt(dates[j]).out[it.k])since=dates[j];else break}it.since=since}
+  return {items,near:now.near,d}}
+function alertsTG(){const a=alertsNow();return {d:a.d,items:a.items.map(x=>({k:x.k+":"+x.since,text:x.text}))}}
+function alertsHTML(){
+  const a=alertsNow();
+  return `<div class="sec-head"><h2>Тревоги ${T("alerts","?")}</h2><span class="eyebrow">${a.d?"после матча "+dShort(a.d):""}</span></div>
+   ${a.items.length?a.items.sort((x,y)=>(x.sev==="bad"?0:1)-(y.sev==="bad"?0:1)).map(x=>`<p class="alert ${x.sev}">${x.sev==="bad"?"⚠":"●"} ${esc(x.text)}</p>`).join(""):`<p class="alert ok">Сейчас тревог нет.</p>`}
+   ${a.near.length?`<p class="note">Близко к порогу: ${a.near.map(esc).join(" ")}</p>`:""}`;
+}
 function renderForm(){
+  {const el=document.getElementById("alertSec");if(el)el.innerHTML=alertsHTML()}
   const W_=GAMES.filter(g=>g.r==="W").length,OTL=GAMES.filter(g=>g.r==="L"&&g.x).length;
   document.getElementById("teamRec").textContent=`${W_} ${pl(W_,WINS)} · ${GAMES.length-W_} ${pl(GAMES.length-W_,LOSS)} (${OTL} в ОТ)`;
   document.getElementById("strip").innerHTML=GAMES.slice(-10).map(g=>`<span class="res ${g.r}" data-tr="wl" title="${dShort(g.d)} ${esc(g.o)} ${g.gf}:${g.ga}${g.x?" "+g.x:""}">${g.r==="W"?"В":"П"}${g.x?`<small style="font-size:9px;margin-left:2px">${g.x}</small>`:""}</span>`).join("");
@@ -1777,6 +1831,7 @@ const TERMS={
  sog:["Броски в створ","Броски, которые долетели до вратаря или стали голом. Броски мимо ворот и заблокированные не считаются.",0],
  blk:["Блоки","Блокированные броски: игрок встал под шайбу и не дал ей долететь до ворот. Особенно важно для защитников.",0],
  hits:["Силовые приёмы","Сколько раз игрок жёстко встретил соперника корпусом в борьбе за шайбу.",0],
+ alerts:["Тревоги","Сигналы по официальным цифрам, когда что-то идёт не так. Пороги: нападающий 5+ матчей подряд без очков или на 2+ минуты меньше времени за 5 матчей, чем в сезоне; основной вратарь ниже .900 за 5 матчей или 6+ игр подряд в старте; 3+ поражения подряд; меньшинство за 10 матчей ниже 75% или большинство ниже 15%; удалений за 5 матчей больше, чем у соперников, на 3+; 3-й период в минус в 3 из 5 последних матчей. «Близко к порогу» — до тревоги остался шаг. О новой тревоге бот пишет владельцу в Telegram.",0],
  vs:["Мы — они","Салават и соперник рядом по официальным протоколам КХЛ всех матчей лиги. Полоска делится пропорционально двум числам: зелёная часть — наша, синяя — их. Зелёным выделено число той команды, у которой показатель лучше (для пропущенных, бросков соперника и штрафов лучше меньше). «10 матчей» и «5 матчей» — последние матчи каждой команды. Вбрасывания есть только за сезон. «Главное» — все заметные разницы между командами.",0],
  ppp:["Реализация большинства","Сколько численных преимуществ команда превратила в гол, в процентах. Считается по официальной статистике КХЛ: голы в большинстве ÷ число полученных большинств. В среднем по лиге около 20%.",0],
  pkp:["Нейтрализация меньшинства","Сколько раз команда отбилась в меньшинстве и не пропустила, в процентах: 100% − пропущенные в меньшинстве ÷ число меньшинств. В среднем по лиге около 80%.",0],

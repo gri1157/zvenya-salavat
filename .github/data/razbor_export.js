@@ -1,6 +1,7 @@
 // Разбор последнего матча для Telegram: открывает само приложение (index.html) в браузере, берёт текст
 // из razborTG() — тот же, что в разделе «Разбор матча», — и кладёт в .github/data/razbor.json.
 // Сервер бота читает этот файл и утром рассылает разбор подписчикам «Матча онлайн».
+// Заодно — тревоги из alertsTG() в .github/data/alerts.json: о новых бот пишет владельцу.
 // Запуск: node .github/data/razbor_export.js index.html
 const fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
@@ -15,8 +16,13 @@ const { chromium } = require('playwright');
   await p.goto('file://' + file + '#games');
   await p.waitForFunction(() => typeof razborTG === 'function', null, { timeout: 30000 });
   const r = await p.evaluate(() => razborTG());
+  const al = await p.evaluate(() => typeof alertsTG === 'function' ? alertsTG() : null);
   await b.close();
   if (errs.length) { console.log('ошибки страницы:', errs.join(' | ')); process.exit(1) }
+  if (al) {
+    const af = path.join(__dirname, 'alerts.json'), txt = JSON.stringify(al, null, 1) + '\n';
+    if (!fs.existsSync(af) || fs.readFileSync(af, 'utf8') !== txt) { fs.writeFileSync(af, txt); console.log('тревоги:', al.items.length ? al.items.map(x => x.text).join(' | ') : 'нет') }
+  }
   if (!r || !r.d || !r.text) { console.log('разбора нет'); return }
   const old = fs.existsSync(out) ? JSON.parse(fs.readFileSync(out, 'utf8')) : {};
   if (old.d === r.d && old.text === r.text && old.full === r.full) { console.log('разбор не изменился:', r.d); return }
