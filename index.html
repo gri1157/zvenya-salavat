@@ -50,6 +50,7 @@ h3{font-size:14px;margin:0;font-weight:600}
 nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;border-bottom:1px solid var(--line);display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
 nav a{flex:none;font:600 13px var(--body);padding:8px 13px;border-radius:999px;color:var(--ink);text-decoration:none;border:1px solid var(--line);background:var(--surface)}
 nav a[aria-current="page"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.subtabs{display:flex;gap:6px;padding-block:8px;overflow-x:auto}.subtabs a{flex:none;font:600 13px var(--body);padding:6px 12px;border-radius:999px;color:var(--ink);text-decoration:none;border:1px solid var(--line);background:var(--surface)}.subtabs a[aria-current="page"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .view{display:flex;flex-direction:column;gap:18px}
 .sec{display:flex;flex-direction:column;gap:10px}
@@ -614,7 +615,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
     <div class="langsw-row"><div class="themesw" role="group" aria-label="Тема оформления"><button data-zt-set="light" aria-pressed="true" aria-label="Светлая тема" title="Светлая тема"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><button data-zt-set="dark" aria-pressed="false" aria-label="Тёмная тема" title="Тёмная тема"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.800z"/></svg></button></div><div class="langsw" role="group" aria-label="Язык"><button data-lang="ru" aria-pressed="true" lang="ru">RU</button><button data-lang="en" aria-pressed="false" lang="en">EN</button></div></div>
     <div class="verline" id="verline"></div>
     <div class="uisw-row"><div class="uisw" role="group" aria-label="Версия приложения"><button data-uiset="lite" aria-pressed="true" lang="en">Lite</button><button data-uiset="pro" aria-pressed="false" lang="en">Pro<span class="beta" aria-label="бета">beta</span></button></div></div>
-    <div class="rolesw-row pro-only"><div class="rolesw" role="group" aria-label="Раздел Pro"><button data-roleset="coach" aria-pressed="true">Тренер</button><button data-roleset="gm" aria-pressed="false">Генменеджер</button><button data-roleset="agent" aria-pressed="false">Агент</button></div></div>
+    <div class="rolesw-row pro-only" style="display:none"><div class="rolesw" role="group" aria-label="Раздел Pro"><button data-roleset="coach" aria-pressed="true">Тренер</button><button data-roleset="gm" aria-pressed="false">Генменеджер</button><button data-roleset="agent" aria-pressed="false">Агент</button></div></div>
     <div class="eyebrow">Салават Юлаев · FONBET КХЛ 2026/27</div>
     <div class="brand"><svg class="emblem" viewBox="0 0 100 116" width="52" height="60" role="img" aria-label="Эмблема «Звеньев Салавата»"><path d="M50 3 L95 15 L95 58 Q95 92 50 113 Q5 92 5 58 L5 15 Z" fill="#0b6b4f" stroke="#ffffff" stroke-width="4"/><path d="M50 11 L88 21 L88 58 Q88 86 50 104 Q12 86 12 58 L12 21 Z" fill="none" stroke="#7fd1ad" stroke-width="1.5"/><text x="50" y="47" text-anchor="middle" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="27" fill="#ffffff">ЗС</text><g stroke="#ffffff" stroke-width="5" stroke-linecap="round" fill="none"><path d="M30 56 L62 88 L72 88"/><path d="M70 56 L38 88 L28 88"/></g><ellipse cx="50" cy="96" rx="9" ry="3.6" fill="#111"/></svg><h1>Звенья Салавата</h1></div>
     <p class="lede lite-only">Пятёрки «Салавата», шансы на ближайший матч, таблица КХЛ и статистика игроков. Нажми на игрока, чтобы увидеть его цифры, или на подчёркнутое слово, чтобы узнать, что оно значит.</p>
@@ -628,22 +629,31 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
   <nav aria-label="Разделы">
     <a href="#game" class="lite-only nav-game"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg><span class="nl">Моя игра</span><span class="ns">Игра</span></a>
-    <a href="#board"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/></svg><span class="nl">Состав</span><span class="ns">Состав</span></a>
+    <a href="#board" class="lite-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/></svg><span class="nl">Состав</span><span class="ns">Состав</span></a>
     <a href="#games" class="lite-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="nl">Матчи</span><span class="ns">Матчи</span></a>
     <a href="#table" class="lite-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1"/></svg><span class="nl">Таблица</span><span class="ns">Таблица</span></a>
-    <a href="#plan" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM9 11h6M9 15h4"/></svg><span class="nl">План на матч</span><span class="ns">План</span></a>
-    <a href="#rival" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg><span class="nl">Соперник и симуляция</span><span class="ns">Соперник</span></a>
-    <a href="#sched" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M9 15.5l2 2 4-4"/></svg><span class="nl">Календарь и вратари</span><span class="ns">Календарь</span></a>
-    <a href="#toi" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M10 2.5h4M18.5 6.5 20 5"/></svg><span class="nl">Время и броски</span><span class="ns">Время</span></a>
-    <a href="#gm" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 12.5h18"/></svg><span class="nl">Генменеджер</span><span class="ns">Генменеджер</span></a>
-    <a href="#agent" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6.5A2.5 2.5 0 0 0 4 5.5v13A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V9z"/><path d="M14 3v6h6M8 14h8M8 17.5h5"/></svg><span class="nl">Агент</span><span class="ns">Агент</span></a>
-    <a href="#form" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/></svg><span class="nl">Форма</span><span class="ns">Форма</span></a>
-    <a href="#special" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4.5 14H11l-1 8 8.5-12H12z"/></svg><span class="nl">Спецбригады</span><span class="ns">Спецбригады</span></a>
-    <a href="#leaders"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8z"/></svg><span class="nl">Лидеры КХЛ</span><span class="ns">Лидеры</span></a>
-    <a href="#players"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="nl">Игроки</span><span class="ns">Игроки</span></a>
-    <a href="#settings" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M19 6h1M4 12h3M13 12h7M4 18h12"/><circle cx="16" cy="6" r="2.4"/><circle cx="10" cy="12" r="2.4"/><circle cx="19" cy="18" r="1.6"/></svg><span class="nl">Настройки</span><span class="ns">Настройки</span></a>
-    <a href="#method" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.4"/></svg><span class="nl">Как считается</span><span class="ns">Расчёт</span></a>
+    <a href="#leaders" class="lite-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8z"/></svg><span class="nl">Лидеры КХЛ</span><span class="ns">Лидеры</span></a>
+    <a href="#players" class="lite-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="nl">Игроки</span><span class="ns">Игроки</span></a>
+    <a href="#match" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM9 11h6M9 15h4"/></svg><span class="nl">Матч</span><span class="ns">Матч</span></a>
+    <a href="#team" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/></svg><span class="nl">Команда</span><span class="ns">Команда</span></a>
+    <a href="#plr" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="nl">Игроки</span><span class="ns">Игроки</span></a>
+    <a href="#gk" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/><path d="M9 12h6"/></svg><span class="nl">Вратари</span><span class="ns">Вратари</span></a>
+    <a href="#opp" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg><span class="nl">Соперник</span><span class="ns">Соперник</span></a>
+    <a href="#club" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 12.5h18"/></svg><span class="nl">Клуб</span><span class="ns">Клуб</span></a>
+    <a href="#league" class="pro-only"><svg class="ni" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8z"/></svg><span class="nl">Лига</span><span class="ns">Лига</span></a>
   </nav>
+  <div class="subtabs pro-only" id="subtabs" hidden></div>
+
+  <!-- ПЛАН НА МАТЧ (в Pro — вкладка «Матч», над доской звеньев) -->
+  <section class="view" id="v-plan" aria-label="План на матч" hidden>
+    <div class="pro-fresh" aria-live="polite"></div>
+    <div class="panel no-print">
+      <div class="ctl-row"><span class="ctl-label">Матч</span><div class="seg" id="planSeg"></div></div>
+      <div class="ctl-row"><span class="ctl-label">Состав</span><div class="seg" id="planSrc"><button data-ps="model" aria-pressed="true">Модель на день матча</button><button data-ps="board" aria-pressed="false">Как на вкладке «Состав»</button></div></div>
+      <div class="actions"><button class="btn pri" id="planPrint">Печать или PDF</button><button class="btn" id="planSave">Скачать план</button><button class="btn" id="planCopy">Скопировать текстом</button></div>
+    </div>
+    <div id="planBody" class="view"></div>
+  </section>
 
   <!-- СОСТАВ -->
   <section class="view" id="v-board" aria-label="Состав">
@@ -726,15 +736,6 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
     <div id="tableBody" class="view"></div>
   </section>
 
-  <section class="view" id="v-plan" aria-label="План на матч" hidden>
-    <div class="pro-fresh" aria-live="polite"></div>
-    <div class="panel no-print">
-      <div class="ctl-row"><span class="ctl-label">Матч</span><div class="seg" id="planSeg"></div></div>
-      <div class="ctl-row"><span class="ctl-label">Состав</span><div class="seg" id="planSrc"><button data-ps="model" aria-pressed="true">Модель на день матча</button><button data-ps="board" aria-pressed="false">Как на вкладке «Состав»</button></div></div>
-      <div class="actions"><button class="btn pri" id="planPrint">Печать или PDF</button><button class="btn" id="planSave">Скачать план</button><button class="btn" id="planCopy">Скопировать текстом</button></div>
-    </div>
-    <div id="planBody" class="view"></div>
-  </section>
 
   <!-- СОПЕРНИК -->
   <section class="view" id="v-rival" aria-label="Соперник" hidden>
@@ -1009,7 +1010,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.103.81";
+const APP_VERSION="1.104.82";
 const UPDATED={n:3,date:"25 ноября 2026",table:"25 ноября",after:"матча с Нефтехимиком (24 ноября, 5:4 ОТ)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -1209,7 +1210,7 @@ document.documentElement.dataset.ui=UI;
 let THEME=null;try{const t=localStorage.getItem("zv-theme");if(t==="light"||t==="dark")THEME=t}catch(e){}
 if(THEME)document.documentElement.dataset.zt=THEME;
 const LITE_V=["board","game","games","table","leaders","players"];
-let ROLE="coach";try{const r=localStorage.getItem("zv-role");if(r==="coach"||r==="gm"||r==="agent")ROLE=r}catch(e){}
+let ROLE="coach";try{localStorage.removeItem("zv-role")}catch(e){} // роли теперь — подвкладки «Клуба»
 document.documentElement.dataset.prole=ROLE;
 try{const s=JSON.parse(localStorage.getItem("zv4")||"null");if(s){mode=s.mode||mode;season=s.season||season;scen=s.scen||scen;board=s.board||board;if(s.grind!=null)grind=s.grind;OV=s.ov||{};MINE=s.mine||null;formN=s.formN||formN;if(Number.isInteger(s.lastN)&&s.lastN>=0)lastN=Math.min(s.lastN,GAMES.length);if(s.shm)shotMode=s.shm;if(s.psrc)planSrc=s.psrc;if(s.sw){["25","24"].forEach(k=>{if(s.sw[k]!=null)SW[k]=s.sw[k]})}Object.keys(W).forEach(k=>{if(s.w&&s.w[k]!=null)W[k].v=s.w[k]})}}catch(e){}
 if(board==="mine"&&!MINE)board="model";if(board==="shared")board="model";
@@ -1548,9 +1549,9 @@ function teamAgg(log){
     pim:S("pim")/n,blk:S("blk")/n,hit:S("hit")/n,first:fst.length/n*100,firstW:fst.length?fst.filter(g=>g.gf>g.ga).length:0,firstN:fst.length,
     backW:fstA.length?fstA.filter(g=>g.gf>g.ga).length:0,backN:fstA.length,p3:S("p3")===0?0:log.reduce((a,g)=>a+g.p3[0]-g.p3[1],0)};
 }
-function vsBlock(opp){
+function vsBlock(opp,compact){ // compact — коротко для «Матч · До игры»: сезон, 6 главных полосок, без выводов
   const LU=teamLog("Салават Юлаев"),LO=teamLog(opp);if(!LU.length||!LO.length)return "";
-  const cut=l=>vsN?l.slice(-vsN):l,U=teamAgg(cut(LU)),O=teamAgg(cut(LO));
+  const N=compact?0:vsN,cut=l=>N?l.slice(-N):l,U=teamAgg(cut(LU)),O=teamAgg(cut(LO));
   const fo=typeof LTS!=="undefined"&&LTS.t?[LTS.t["Салават Юлаев"],LTS.t[opp]]:null;
   const M=[ // подпись, у нас, у них, формат, 1 — больше лучше, -1 — меньше лучше, порог заметной разницы
    ["Очков за матч",U.pts,O.pts,f2,1,.15],["Забито за матч",U.gf,O.gf,f2,1,.3],["Пропущено за матч",U.ga,O.ga,f2,-1,.3],
@@ -1558,7 +1559,7 @@ function vsBlock(opp){
    ["% отражённых бросков",U.sv,O.sv,f1,1,1],["Большинство, %",U.pp,O.pp,f1,1,4],["Меньшинство, %",U.pk,O.pk,f1,1,4],
    ["Штрафные минуты за матч",U.pim,O.pim,f1,-1,2],["Забивают первыми, % матчей",U.first,O.first,v=>Math.round(v),1,10],
    ["Блоки за матч",U.blk,O.blk,f1,1,2],["Силовые за матч",U.hit,O.hit,f1,1,3]];
-  if(fo&&fo[0]&&fo[1]&&!vsN)M.push(["Выигранные вбрасывания, %",fo[0].fop,fo[1].fop,f1,1,2]);
+  if(fo&&fo[0]&&fo[1]&&!N)M.push(["Выигранные вбрасывания, %",fo[0].fop,fo[1].fop,f1,1,2]);
   const row=([l,a,b,fmt,dir])=>{const t=a+b||1,wa=clamp(a/t*100,4,96);const ba=dir*(a-b)>0,bb=dir*(b-a)>0;
     return `<div class="vsrow"><span class="vsl">${l}${dir<0?" · меньше лучше":""}</span><b class="${ba?"good":""}">${fmt(a)}</b><div class="vsbar"><i style="width:${wa}%"></i><i></i></div><b class="${bb?"good":""}">${fmt(b)}</b></div>`};
   const facts=[];
@@ -1569,6 +1570,10 @@ function vsBlock(opp){
   if(O.p3<0)facts.push(`3-й период у них в минус: ${O.p3} за ${O.n} ${pl(O.n,MATCH)}.`);
   const h2h=LU.filter(g=>g.opp===opp).map(g=>`${dShort(g.d)} ${g.gf}:${g.ga}${g.x?" "+g.x:""}`).join(", ");
   const btn=(v,t)=>`<button data-vsn="${v}" aria-pressed="${vsN===v}">${t}</button>`;
+  if(compact){const K=[M[0],M[1],M[2],M[7],M[8],M[6]];
+    return `<div class="sec"><div class="sec-head"><h2>Мы — они</h2><span class="eyebrow">сезон · khl.ru</span></div>
+     <div class="vshead"><b style="color:var(--accent)">Салават Юлаев</b><span>${U.n} и ${O.n} ${pl(O.n,MATCH)}</span><b style="color:var(--opp)">${esc(opp)}</b></div>
+     ${K.map(row).join("")}<p class="note"><a href="#opp" data-rvset="${esc(opp)}">Полностью: 14 показателей, 10 и 5 матчей — во вкладке «Соперник»</a></p></div>`}
   return `<div class="sec" id="vsSec"><div class="sec-head"><h2>Мы — они ${T("vs","?")}</h2><span class="eyebrow">khl.ru · ${esc(dShort(LGM.d))}</span></div>
    <div class="seg">${btn(0,"Сезон")}${btn(10,"10 матчей")}${btn(5,"5 матчей")}</div>
    <div class="vshead"><b style="color:var(--accent)">Салават Юлаев</b><span>${U.n} и ${O.n} ${pl(O.n,MATCH)}</span><b style="color:var(--opp)">${esc(opp)}</b></div>
@@ -2045,9 +2050,23 @@ function render(){
 
 // ===== ДЛЯ ТРЕНЕРА: план на матч, календарь и вратари, время и броски =====
 let planIdx=0,SIMP=null,PLANX=null,toiSort="avg",toiF="all";
-const okView=h=>{if(h==="razbor")return UI==="lite"?"games":"toi";if(UI==="lite")return LITE_V.includes(h)?h:"game";if(ROLE==="gm")return "gm";if(ROLE==="agent")return "agent";return (VIEWS.includes(h)&&!["game","games","table","gm","agent"].includes(h))?h:"board"};
+// Pro: 7 вкладок, каждая — несколько прежних разделов подряд (этап 8)
+const PTABS={match:["plan","board"],"match-post":["toi"],team:["form","special"],plr:["players"],gk:["sched"],opp:["rival"],club:["gm"],"club-agent":["agent"],"club-model":["settings","method"],league:["table","leaders"]};
+const PALIAS={plan:"match",board:"match",razbor:"match-post",toi:"match-post",form:"team",special:"team",players:"plr",sched:"gk",rival:"opp",gm:"club",agent:"club-agent",settings:"club-model",method:"club-model",leaders:"league",table:"league"};
+const PSUB={match:[["match","До игры"],["match-post","После игры"]],club:[["club","Генменеджер"],["club-agent","Агент"],["club-model","Модель"]]};
+const PBASE=t=>t.startsWith("match")?"match":t.startsWith("club")?"club":t;
+function dayTab(){ // первый экран Pro: день матча → «Матч», после матча → разбор, иначе → «Команда»
+  try{if(TL.some(x=>x.d===todayISO&&!x.played))return "match";
+    const last=[...GAMES.map(g=>g.d),...teamLog(US).map(x=>x.d)].filter(d=>d<=todayISO).sort().pop();
+    if(last&&dayDiff(last,todayISO)<=1)return "match-post"}catch(e){}
+  return "team"}
+const proTab=h=>PTABS[h]?h:PALIAS[h]||dayTab();
+const okView=h=>{if(h==="razbor"&&UI==="lite")return "games";if(UI==="lite")return LITE_V.includes(h)?h:"game";return PTABS[proTab(h)][0]};
+const curViews=()=>UI==="lite"?[curView()]:PTABS[proTab(location.hash.replace("#",""))];
+const canonHash=h=>UI==="lite"?okView(h):proTab(h);
 const curView=()=>okView(location.hash.replace("#",""));
-function renderLazy(){const v=curView();if(v==="game")renderGame();else if(v==="games")renderGames();else if(v==="table")renderStand();else if(v==="plan")renderPlan();else if(v==="sched")renderSched();else if(v==="toi")renderToi();else if(v==="gm")renderGM();else if(v==="agent")renderAgent();else if(v==="method"){renderChecks();renderFcl()}else if(v==="leaders")renderLeaders()}
+function renderLazy(){for(const v of curViews())renderOne(v)}
+function renderOne(v){if(v==="game")renderGame();else if(v==="games")renderGames();else if(v==="table")renderStand();else if(v==="plan")renderPlan();else if(v==="sched")renderSched();else if(v==="toi")renderToi();else if(v==="gm")renderGM();else if(v==="agent")renderAgent();else if(v==="method"){renderChecks();renderFcl()}else if(v==="leaders")renderLeaders()}
 const kmS=n=>n.toLocaleString("ru-RU");
 const tripFlags=x=>[x.rest===0?`<span class="flag w">второй день подряд</span>`:"",x.in4>=3?`<span class="flag w">3 матча за 4 дня</span>`:"",x.km>=2500?`<span class="flag m">дальний перелёт</span>`:"",Math.abs(x.tz)>=2?`<span class="flag m">${x.tz>0?"+":"−"}${Math.abs(x.tz)} ч по времени</span>`:""].filter(Boolean).join(" ");
 const tripText=x=>`${x.h?"дома, Уфа":`в гостях, ${x.loc[0]}`} · отдых ${x.rest==null?"—":`${x.rest} ${pl(x.rest,DAYS)}`} · ${x.km?`перелёт ≈${kmS(x.km)} км`:"без перелёта"}`;
@@ -2119,6 +2138,7 @@ function renderPlan(){
    <div class="tile"><span>Вратарь</span><b>${gk?esc(SUR(gk.name)):"—"}</b><small>${esc(rot.why||"")}${g2?` · в запасе ${esc(SUR(g2.name))}`:""}</small></div>
   </div>
   ${(()=>{const H=x.h?HOME:1/HOME;return fcFactors({S,O,h:x.h,o:x.o,d:x.d,gk,p:matchProb(LEAGUE_G*S.att*O.def*H,LEAGUE_G*O.att*S.def/H)})})()}
+  ${vsBlock(x.o,true)}
   <div class="ctl-row no-print"><span class="ctl-label">Считать по</span><div class="seg">${shotSeg()}</div></div>
   <div class="panel"><div class="sec-head"><h2>Состав</h2><span class="eyebrow">${esc(D.src)}</span></div>
    <div>${lines}</div>
@@ -3375,6 +3395,7 @@ document.addEventListener("click",async e=>{
   if(e.target.closest("[data-showpeople]")){board="people";render();const f=document.getElementById("fives");f&&f.scrollIntoView({behavior:"smooth",block:"start"});toast("На доске народный состав");return}
   const dp=e.target.closest("[data-dp]");if(dp){dpScope=dp.dataset.dp;document.querySelectorAll("#dpScope button").forEach(x=>x.setAttribute("aria-pressed",String(x===dp)));renderDPairs();return}
   const vn=e.target.closest("[data-vsn]");if(vn){vsN=+vn.dataset.vsn;renderRival();return}
+  const rs=e.target.closest("[data-rvset]");if(rs){rivalName=rs.dataset.rvset;const rr=RIVALS.find(q=>q.name===rivalName);if(rr)rivalHome=rr.home}
   const rv=e.target.closest("[data-rv]");if(rv){rivalName=rv.dataset.rv;rivalHome=rv.dataset.rh==="1";renderRival();return}
   const hm=e.target.closest("[data-hm]");if(hm){rivalHome=hm.dataset.hm==="1";renderRival();return}
   const uf=e.target.closest("[data-uf]");if(uf){useForm=uf.dataset.uf==="1";renderRival();return}
@@ -3395,7 +3416,7 @@ document.addEventListener("click",async e=>{
   const pb=e.target.closest("[data-id]");if(pb&&(pb.classList.contains("slot")||pb.classList.contains("chip")||pb.classList.contains("nm"))){openSheet(playerSheet(P[+pb.dataset.id]));return}
   const sb=e.target.closest("[data-sort]");if(sb){const k=sb.dataset.sort;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=["name","pos","hand","n","st"].includes(k)?1:-1}renderTable();return}
 });
-document.addEventListener("change",e=>{if(e.target.id==="razSel"){razD=e.target.value;const v=curView();if(v==="games")renderGames();else renderToi();return}if(e.target.id==="rivSel"){rivalName=e.target.value;const rr=RIVALS.find(x=>x.name===rivalName);if(rr)rivalHome=rr.home;renderRival();return}const c=e.target.closest("[data-on]");if(c){OV[P[+c.dataset.on].name]=c.checked;render();return}if(e.target.id==="cmpA"||e.target.id==="cmpB")renderCompare()});
+document.addEventListener("change",e=>{if(e.target.id==="razSel"){razD=e.target.value;if(curViews().includes("games"))renderGames();else renderToi();return}if(e.target.id==="rivSel"){rivalName=e.target.value;const rr=RIVALS.find(x=>x.name===rivalName);if(rr)rivalHome=rr.home;renderRival();return}const c=e.target.closest("[data-on]");if(c){OV[P[+c.dataset.on].name]=c.checked;render();return}if(e.target.id==="cmpA"||e.target.id==="cmpB")renderCompare()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!sheet.hidden)closeSheet();if(e.key==="Enter"&&e.target.id==="codeIn"){const b=document.querySelector('[data-act="loadcode"]');b&&b.click()}});
 document.getElementById("shareBtn").addEventListener("click",shareSheet);
 document.getElementById("openCode").addEventListener("click",codeSheet);
@@ -3499,14 +3520,17 @@ document.getElementById("leadBody").addEventListener("click",e=>{const p=e.targe
 
 // ===== ВКЛАДКИ =====
 const VIEWS=["board","game","games","table","plan","rival","sched","toi","gm","agent","form","special","leaders","players","settings","method"];
-function route(){const h=location.hash.replace("#","");const v=okView(h);
-  VIEWS.forEach(x=>{document.getElementById("v-"+x).hidden=x!==v});
-  document.querySelectorAll("nav a").forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+v?"page":"false"));if(STATE.LU)renderLazy()}
+function route(){const h=location.hash.replace("#","");const show=curViews(),t=UI==="lite"?show[0]:PBASE(proTab(h));
+  VIEWS.forEach(x=>{document.getElementById("v-"+x).hidden=!show.includes(x)});
+  document.querySelectorAll("nav a").forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+t?"page":"false"));
+  const st=document.getElementById("subtabs"),sub=UI==="pro"?PSUB[t]:null,cur=UI==="pro"?proTab(h):"";
+  if(st){st.hidden=!sub;st.innerHTML=sub?sub.map(([k,l])=>`<a href="#${k}" aria-current="${k===cur?"page":"false"}">${l}</a>`).join(""):""}
+  if(STATE.LU)renderLazy()}
 window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(/^v-[a-z0-9]{6}$/.test(h)){loadCode(h.slice(2));return}route();window.scrollTo({top:0})});
 const syncUI=()=>document.querySelectorAll("[data-uiset]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.uiset===UI)));
 document.querySelector(".uisw").addEventListener("click",e=>{const b=e.target.closest("[data-uiset]");if(!b||b.dataset.uiset===UI)return;
   UI=b.dataset.uiset;try{localStorage.setItem("zv-ui",UI)}catch(err){}document.documentElement.dataset.ui=UI;syncUI();
-  if(!sheet.hidden)closeSheet();const h=location.hash.replace("#","");if(okView(h)!==h){try{history.replaceState(null,"","#"+okView(h))}catch(err){}}
+  if(!sheet.hidden)closeSheet();const h=location.hash.replace("#","");if(canonHash(h)!==h){try{history.replaceState(null,"","#"+canonHash(h))}catch(err){}}
   route();render();toast(UI==="lite"?"Lite: самое главное":"Pro beta: все разделы и настройки, версия в доработке")});
 document.getElementById("boardSel").addEventListener("change",e=>{board=e.target.value;render()});
 document.getElementById("kozSel").addEventListener("change",e=>{if(!e.target.value)return;board=e.target.value;render();toast("На доске звенья Козлова на этот матч")});
