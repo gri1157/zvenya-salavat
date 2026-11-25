@@ -1,0 +1,45 @@
+name: Статистика клубов КХЛ
+
+# Без ИИ: каждое утро берёт официальную командную статистику всех 22 клубов с khl.ru (обычные страницы
+# статистики в браузере Playwright), сверяет цифры и обновляет константу LTS в index.html.
+# Если хоть что-то не сходится — ничего не меняет, запуск краснеет (видно в Actions).
+on:
+  schedule:
+    - cron: '50 4 * * *'   # 09:50 по Уфе, до сборщика данных
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: { group: league, cancel-in-progress: false }
+
+jobs:
+  league:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Браузер
+        run: npm init -y >/dev/null && npm install playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: Статистика клубов
+        run: |
+          cp index.html /tmp/old.html
+          node .github/data/league_build.js index.html
+          cmp -s index.html /tmp/old.html && { echo "без изменений"; echo "SKIP=1" >> "$GITHUB_ENV"; } || true
+      - name: Защита качества
+        if: env.SKIP != '1'
+        run: python3 .github/data/diff-report.py /tmp/old.html index.html
+      - name: Автопроверка
+        if: env.SKIP != '1'
+        run: node .github/qa/check.js index.html qa-shots
+      - name: Сохранить
+        if: env.SKIP != '1'
+        run: |
+          git config user.name "Claude"
+          git config user.email "noreply@anthropic.com"
+          git add index.html
+          git commit -m "Статистика клубов КХЛ (khl.ru) на $(TZ=Asia/Yekaterinburg date +%F)"
+          for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && exit 0; sleep 5; done
+          exit 1
