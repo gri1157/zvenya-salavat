@@ -2,6 +2,7 @@ name: Статистика клубов КХЛ
 
 # Без ИИ: каждое утро берёт официальную командную статистику всех 22 клубов с khl.ru (обычные страницы
 # статистики в браузере Playwright), сверяет цифры и обновляет константу LTS в index.html.
+# Затем догружает протоколы новых сыгранных матчей лиги (кэш .github/data/league-games.json) → константа LGM.
 # Если хоть что-то не сходится — ничего не меняет, запуск краснеет (видно в Actions).
 on:
   schedule:
@@ -16,7 +17,7 @@ concurrency: { group: league, cancel-in-progress: false }
 jobs:
   league:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,7 +28,8 @@ jobs:
         run: |
           cp index.html /tmp/old.html
           node .github/data/league_build.js index.html
-          cmp -s index.html /tmp/old.html && { echo "без изменений"; echo "SKIP=1" >> "$GITHUB_ENV"; } || true
+          node .github/data/league_games.js index.html || echo "GAMES_FAIL=1" >> "$GITHUB_ENV"
+          git status --porcelain | grep -q . || { echo "без изменений"; echo "SKIP=1" >> "$GITHUB_ENV"; }
       - name: Защита качества
         if: env.SKIP != '1'
         run: python3 .github/data/diff-report.py /tmp/old.html index.html
@@ -39,7 +41,10 @@ jobs:
         run: |
           git config user.name "Claude"
           git config user.email "noreply@anthropic.com"
-          git add index.html
+          git add index.html .github/data/league-games.json
           git commit -m "Статистика клубов КХЛ (khl.ru) на $(TZ=Asia/Yekaterinburg date +%F)"
           for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && exit 0; sleep 5; done
           exit 1
+      - name: Протоколы матчей не сошлись
+        if: env.GAMES_FAIL == '1'
+        run: echo "Протоколы матчей лиги собраны не полностью или не сошлись с таблицей — LGM не обновлена, кэш сохранён" && exit 1
