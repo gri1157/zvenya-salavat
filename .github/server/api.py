@@ -778,7 +778,7 @@ def text_lines(page):
 def our_surnames():
     try:
         with open(PAGE, encoding="utf8") as f:
-            row = re.search(r"^const RAW=(\[.*?\n\]);", f.read(), re.M | re.S)
+            row = re.search(r"^const RAW=(\[.*?\]);[ \t]*$", f.read(), re.M | re.S)  # массив кончается «]];» в конце строки
         return {r[1].split()[-1] for r in json.loads(row.group(1))}
     except Exception:
         return set()

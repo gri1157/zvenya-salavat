@@ -70,6 +70,7 @@ def fake_fetch(url):
 
 
 api.fetch = fake_fetch
+_our_surnames = api.our_surnames
 api.our_surnames = lambda: {"Алалыкин", "Жаровский", "Маджо", "Шипачев", "Пименов", "Газимов"}
 api.tg = lambda method, **kw: msgs.append(kw["text"]) or {"ok": True}
 api.calendar = lambda: {"2026-11-16": {"o": "Адмирал", "home": True, "kickoff": KICK, "deadline": KICK - 600}}
@@ -318,6 +319,11 @@ api._cache["srseen"] = {}
 api.save = lambda *a, **k: None
 expect("Sports.ru: матч по слагу из календаря", api.sr_match_id("2026-11-26", "Динамо Мн"), "dynamo-minsk-vs-salavat")
 expect("передачи к голу соперника", _sr_assists("2026-11-26", {"o": "Динамо Мн"}, 475, "Данияр Галиев"), ["Обе-Кюбель", "Улле"])
+
+# фамилии наших игроков из настоящей страницы (26.11 список был пустым — все голы считались голами соперника)
+api.PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "index.html")
+_ours = _our_surnames()
+expect("наши фамилии из страницы приложения", (len(_ours) >= 25, "Броссо" in _ours, "Галиев" in _ours), (True, True, False))
 
 print("ВСЁ В ПОРЯДКЕ" if ok else "ЕСТЬ ОШИБКИ")
 sys.exit(0 if ok else 1)
