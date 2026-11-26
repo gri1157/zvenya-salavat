@@ -758,7 +758,9 @@ SR = "https://www.sports.ru"
 UA = {"User-Agent": "Mozilla/5.0 (compatible; zvenya-salavata/1.0)", "Accept-Language": "ru"}
 MONTHS = {"января": 1, "февраля": 2, "марта": 3, "апреля": 4, "мая": 5, "июня": 6, "июля": 7,
           "августа": 8, "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12}
-SURNAME = r"[А-ЯЁA-Z][а-яёa-zA-Z'\-]+(?: [А-ЯЁA-Z][а-яёa-zA-Z'\-]+)?"
+# фамилия: «Галиев», «Обе-Кюбель» (заглавная после дефиса), «О'Делл»; может быть с именем
+NAMEW = r"[А-ЯЁA-Z][а-яёa-zA-Z']+(?:-[А-ЯЁA-Zа-яёa-z][а-яёa-zA-Z']*)*"
+SURNAME = NAMEW + r"(?: " + NAMEW + r")?"
 
 
 def fetch(url):
@@ -820,6 +822,23 @@ def sr_match_id(d, opp):
     if d in ids:
         return ids[d]
     cal = fetch(SR + "/hockey/club/salavat/calendar/")
+    # С ноября 2026 Sports.ru даёт матчам ссылки-слаги (/hockey/match/dynamo-minsk-vs-salavat/) вместо номеров.
+    # В строке календаря сначала идёт ссылка-дата /hockey/match/2026-11-26/, следом — ссылка на сам матч.
+    i = cal.find(f"/hockey/match/{d}/")
+    if i >= 0:
+        for mid in re.findall(r"/hockey/match/([a-z0-9][a-z0-9\-]*)/", cal[i + 20:i + 4000]):
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", mid):
+                break  # дошли до следующей строки календаря
+            try:
+                pd, sal, txt = page_match(fetch(f"{SR}/hockey/match/{mid}/"))
+            except Exception:
+                break
+            if pd == d and sal:
+                with LOCK:
+                    ids[d] = mid
+                    save("srids")
+                return mid
+            break
     seen = load("srseen")
     for mid in dict.fromkeys(re.findall(r"/hockey/match/(\d+)/", cal)):
         if mid in seen:
@@ -981,8 +1000,21 @@ def push(text, silent=False, groups=True, **extra):
     return out
 
 
+def goal_time(t):
+    """Время гола: минута матча и время внутри периода — «7:55 (1-й период)», «27:18 (2-й период, 7:18)»."""
+    if t > 3600:
+        p, r = "овертайм", t - 3600
+    else:
+        n = min(3, (t - 1) // 1200 + 1) if t > 0 else 1
+        p, r = f"{n}-й период", t - (n - 1) * 1200
+    if p == "1-й период":
+        return f"{t // 60}:{t % 60:02d} (1-й период)"
+    return f"{t // 60}:{t % 60:02d} ({p}, {r // 60}:{r % 60:02d})"
+
+
 def goal_text(g, head, us, them, who, t, ast):
-    return f"{head}\n{score_line(g, us, them)}\n🏒 {who}{' (' + ', '.join(ast) + ')' if ast else ''}, {t // 60}:{t % 60:02d}"
+    """Сообщение о голе — одинаковое для наших шайб и шайб соперника: автор, передачи, время."""
+    return f"{head}\n{score_line(g, us, them)}\n🏒 {who}{' (' + ', '.join(ast) + ')' if ast else ''}\n⏱ {goal_time(t)}"
 
 
 def assists_tick(d, g, st, now):
@@ -1011,11 +1043,11 @@ def assists_tick(d, g, st, now):
 
 def goals_list(d, g, st, rows):
     """Все шайбы матча для итогового сообщения: счёт, автор, передачи, время. Передачи — те, что уже нашли во время
-    матча; для наших шайб без передач ещё раз смотрим трансляцию Sports.ru."""
+    матча; для шайб без передач (наших и соперника) ещё раз смотрим трансляцию Sports.ru."""
     if not rows:
         return ""
     known = dict(st.get("ast", {}))
-    need = [r for r in rows if r[3] and f"{r[1]}|{r[2]}" not in known]
+    need = [r for r in rows if f"{r[1]}|{r[2]}" not in known]  # и наши шайбы, и шайбы соперника
     if need:
         try:
             mid = sr_match_id(d, g["o"])
