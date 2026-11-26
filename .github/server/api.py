@@ -882,7 +882,7 @@ def sr_goals_tick(d, g, now):
             continue
         done.append(k)
         head = "🚨 ГОЛ «САЛАВАТА»!" if mine else f"Гол {g['o']}"
-        push(f"{head}\n{score_line(g, us, them)}\n🏒 {who}{' (' + ', '.join(ast) + ')' if ast else ''}, {t // 60}:{t % 60:02d}", silent=not mine)
+        push(goal_text(g, head, us, them, who, t, ast), silent=not mine)
     with LOCK:
         sent[key] = done
         save("sent")
@@ -1129,6 +1129,23 @@ def live_tick(now):
             rows.append((f"{h}:{a}", t, who, mine, us, them))
         if st["src"] != "sr":
             st["src"] = "se"
+        # «Спорт-Экспресс» иногда отстаёт на десятки минут (26.11: 0:1 при счёте 1:2). Раз в минуту сверяемся
+        # с Sports.ru: если там два раза подряд больше голов, до конца матча голы берём оттуда.
+        if st["src"] == "se" and not late and now - st.get("srchk", 0) >= 60:
+            st["srchk"] = now
+            try:
+                smid = sr_match_id(d, g["o"])
+                srg = parse_goals(fetch(f"{SR}/hockey/match/{smid}/")) if smid else []
+            except Exception as e:
+                print("сверка с Sports.ru:", e, file=sys.stderr)
+                srg = []
+            st["lag"] = st.get("lag", 0) + 1 if len(srg) > len(rows) else 0
+            if st["lag"] >= 2:
+                st["src"] = "sr"
+                with LOCK:  # голы, о которых уже написали, второй раз не шлём
+                    sent[d + "goals"] = [f"{t}|{w}" for t, w, _ in srg[:len(st["goals"])]]
+                    save("sent")
+                print("матч онлайн: Спорт-Экспресс отстал, голы — со Sports.ru", file=sys.stderr)
         if se["period"] > st["p"]:
             p = se["period"]
             st["p"] = p
