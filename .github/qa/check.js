@@ -8,7 +8,7 @@ const path = require('path');
 
 const src = path.resolve(process.argv[2] || 'index.html');
 const shots = process.argv[3] || '';
-const LITE = ['board', 'game', 'games', 'table', 'leaders', 'players'];
+const LITE = ['game', 'games', 'board', 'league', 'players', 'table', 'leaders']; // 5 вкладок + старые ссылки
 const PRO = ['match', 'match-post', 'team', 'plr', 'gk', 'opp', 'club', 'club-agent', 'club-model', 'league'];
 
 (async () => {
@@ -40,6 +40,13 @@ const PRO = ['match', 'match-post', 'team', 'plr', 'gk', 'opp', 'club', 'club-ag
       if (shots) { fs.mkdirSync(shots, { recursive: true }); await pg.screenshot({ path: path.join(shots, `${ui}-${v}.png`) }); }
     }
   }
+  // Lite: вкладка «Лига» показывает таблицу и лидеров КХЛ вместе
+  await pg.goto(url + '#board');
+  await pg.click('[data-uiset="lite"]').catch(() => {});
+  await pg.goto(url + '#league');
+  await pg.waitForTimeout(350);
+  const lg = await pg.evaluate(() => ['v-table', 'v-leaders'].every(id => !document.getElementById(id).hidden) && !!document.querySelector('nav a[href="#league"][aria-current="page"]'));
+  if (!lg) res.failedChecks.push('Lite: вкладка «Лига» не показывает таблицу и лидеров');
   // Клуб: Генменеджер и Агент (бывшие роли) + диалог поиска по регламенту
   for (const role of ['club', 'club-agent']) {
     await pg.goto(url + '#board');
