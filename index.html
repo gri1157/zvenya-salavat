@@ -609,7 +609,9 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 .gm-fives .slot{border:1.5px solid var(--frame)!important}
 .gm-fives .slot.empty-g{border-style:dashed!important;background:color-mix(in srgb,var(--sy) 8%,transparent)!important}
 .gm-fives .slot.empty-g .snm{color:var(--sy)!important;font-weight:700}
-.gm-score input,#gAgent{border:2px solid var(--frame)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--sy) 10%,transparent)!important;font-weight:800;color:var(--ink)}
+.gm-agent{width:100%;justify-content:flex-start;text-align:left;min-height:48px}
+.gm-grp{margin:12px 0 4px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.gm-score input,#gAgent,#gAgentBtn{border:2px solid var(--frame)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--sy) 10%,transparent)!important;font-weight:800;color:var(--ink)}
 .gm-score input:focus,#gAgent:focus{outline:none;border-color:var(--sy)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--sy) 25%,transparent)!important}
 .gm-score input:disabled,#gAgent:disabled{opacity:.85}
 /* капля, которую можно тащить пальцем */
@@ -1029,7 +1031,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.107.85";
+const APP_VERSION="1.108.87";
 const UPDATED={n:3,date:"25 ноября 2026",table:"25 ноября",after:"матча с Нефтехимиком (24 ноября, 5:4 ОТ)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -3173,6 +3175,16 @@ function gamePickSheet(){if(!GSEL||!GSLOT)return;const lu=GSEL.lu,used=gUsed(lu)
   ${sorts}${cur?`<div class="actions"><button class="btn" data-gp="">Убрать ${esc(SUR(cur))} с этого места</button></div>`:""}
   <div class="swap gm-list">${rows}</div>
   <p class="legend">Очки, плюс-минус, время на льду и скорость — за сезон 2026/27, форма — очки в последних матчах. Травмированных и уже поставленных выбрать нельзя: сначала убери игрока с его места.</p>`)}
+function gAgentSheet(){if(!GSEL||GSEL.locked)return;const cur=GSEL.a;
+  const key={pts:o=>o.x.pts,pm:o=>o.x.pm,spd:o=>o.x.spd,form:o=>o.x.form,toi:o=>{const t=String(o.x.toi);return t.includes(":")?toMin(t):0}}[GPSORT]||(o=>o.x.pts);
+  const row=({p,x})=>{const st=status(p);return `<button data-ga="${esc(p.name)}">${jersey(p.name,p.n,p.pos,40)}<span class="gm-pi"><b>${p.n==="—"?"":p.n+" "}${esc(SUR(p.name))}</b> <small>${esc(p.name.split(" ")[0])}</small><br><small><span>${x.gp} ${pl(x.gp,MATCH)}</span> · <span>${x.pts} ${pl(x.pts,GPTS)}</span> · <span>${sgn(x.pm)}</span> · <span>${esc(String(x.toi))} на льду</span> · <span>форма ${esc(x.ftxt)}</span></small>${st?`<br><small class="bad"><span>${esc(st[0])}:</span> <span>${esc(st[1])}</span></small>`:""}</span><small>${p.name===cur?"выбран":""}</small></button>`};
+  const grp=(arr)=>arr.map(p=>({p,x:gInfo(p)})).sort((a,b)=>key(b)-key(a)||SUR(a.p.name).localeCompare(SUR(b.p.name),"ru"));
+  const ok=P.filter(p=>!status(p)),out=P.filter(p=>status(p));
+  const sec=(t,arr)=>arr.length?`<h4 class="gm-grp">${t} · ${arr.length}</h4>${grp(arr).map(row).join("")}`:"";
+  openSheet(`<div class="sheet-top"><div><div class="eyebrow">Твой игрок матча</div><h3 class="big" id="shName">Все полевые игроки · ${P.length}</h3></div><button class="btn" data-close>Закрыть</button></div>
+  <div class="seg">${[["pts","Очки"],["form","Форма"],["pm","+/-"],["toi","Время"],["spd","Скорость"]].map(([k,l])=>`<button data-gas="${k}" aria-pressed="${GPSORT===k}">${l}</button>`).join("")}</div>
+  <div class="swap gm-list">${sec("Нападающие",ok.filter(p=>p.pos==="F"))}${sec("Защитники",ok.filter(p=>p.pos==="D"))}${sec("Под вопросом: травма или «Торос»",out)}</div>
+  <p class="legend">Очки, плюс-минус и время на льду — за сезон 2026/27, форма — очки в последних матчах. Игроков «под вопросом» тоже можно выбрать, но если он не выйдет на лёд — минус 10. Вратари в зачёт агента не входят.</p>`)}
 /* автосостав: пустые места — из модели приложения или из последнего состава Козлова, остаток — лучшие доступные по очкам */
 function gAuto(src){if(!GSEL||GSEL.locked)return;let t;
   if(src==="coach"&&COACH[0])t={f:COACH[0].f||[],d:COACH[0].d||[],g:(COACH[0].g||[])[0]||null};
@@ -3236,7 +3248,7 @@ function renderGame(){const el=document.getElementById("gameBody");if(!el||!STAT
    <div class="gm-score"><label class="vh" for="gGf">Голы Салавата</label><input id="gGf" type="number" inputmode="numeric" min="0" max="15" step="1" value="${esc(GSEL.gf)}"${lock?" disabled":""}><span>Салават : ${esc(nx.o)}</span><label class="vh" for="gGa">Голы соперника</label><input id="gGa" type="number" inputmode="numeric" min="0" max="15" step="1" value="${esc(GSEL.ga)}"${lock?" disabled":""}></div>
    <p class="legend">Ничьих не бывает: если думаешь, что будет овертайм, ставь счёт с победой в один гол, например 3:2.</p>
    <h3>4. Твой игрок матча</h3>
-   <select id="gAgent" class="varsel" style="flex:none;width:100%"${lock?" disabled":""}><option value="">Выбери игрока</option>${avail.map(p=>`<option value="${esc(p.name)}"${GSEL.a===p.name?" selected":""}>${esc(p.name)} · ${p.pos==="F"?"нападающий":"защитник"}</option>`).join("")}</select>
+   ${(()=>{const ap=GSEL.a&&P.find(p=>p.name===GSEL.a);return `<button class="btn gm-agent" id="gAgentBtn" type="button"${lock?" disabled":""}>${ap?`<b>${esc(SUR(ap.name))}</b> ${esc(ap.name.split(" ")[0])} · ${ap.pos==="F"?"нападающий":"защитник"}${lock?"":" — изменить"}`:"Выбери игрока из всего состава"}</button>`})()}
    ${GERR&&GERR.startsWith("!")?`<p class="gm-err" role="alert">${esc(GERR.slice(1))}</p>`:""}
    ${lock?"":`<div class="actions"><button class="btn pri" id="gSave"${noDb||!today?" disabled":""}>Отправить прогноз</button></div>`}
    ${saveNote}
@@ -3279,6 +3291,9 @@ document.addEventListener("click",e=>{
   const gs_=e.target.closest("[data-gslot]");if(gs_&&GSEL&&!GSEL.locked){const [t,i,j]=gs_.dataset.gslot.split(":");GSLOT={t,i:+i,j:+j};gamePickSheet();return}
   const gp=e.target.closest("[data-gp]");if(gp&&GSLOT&&GSEL&&!GSEL.locked){const n=gp.dataset.gp||null;const {t,i,j}=GSLOT;if(t==="g")GSEL.lu.g=n;else GSEL.lu[t][i][j]=n;gDraftSave();GSLOT=null;closeSheet();if(GERR.startsWith("!"))GERR="";renderGame();return}
   const gps=e.target.closest("[data-gps]");if(gps){GPSORT=gps.dataset.gps;gamePickSheet();return}
+  if(e.target.closest("#gAgentBtn")){gAgentSheet();return}
+  const gas=e.target.closest("[data-gas]");if(gas){GPSORT=gas.dataset.gas;gAgentSheet();return}
+  const ga=e.target.closest("[data-ga]");if(ga&&GSEL&&!GSEL.locked){GSEL.a=ga.dataset.ga;gDraftSave();closeSheet();if(GERR.startsWith("!"))GERR="";renderGame();return}
   const w=e.target.closest("[data-gw]");if(w&&GSEL&&!GSEL.locked){GSEL.w=w.dataset.gw;GERR="";gDraftSave();renderGame();return}
   const gs=e.target.closest("[data-gs]");if(gs){GSORT=gs.dataset.gs;renderGame();return}
   const gpr=e.target.closest("[data-gper]");if(gpr){GPER=gpr.dataset.gper;renderGame();return}
