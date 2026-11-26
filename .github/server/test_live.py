@@ -320,6 +320,53 @@ api.save = lambda *a, **k: None
 expect("Sports.ru: матч по слагу из календаря", api.sr_match_id("2026-11-26", "Динамо Мн"), "dynamo-minsk-vs-salavat")
 expect("передачи к голу соперника", _sr_assists("2026-11-26", {"o": "Динамо Мн"}, 475, "Данияр Галиев"), ["Обе-Кюбель", "Улле"])
 
+# «Спорт-Экспресс» застрял на первом голе, Sports.ru идёт дальше: переключение, передачи, итог матча
+SR_LAG = ("<div>16 ноября 2026</div><div>Салават Юлаев</div><div>Адмирал</div>"
+          "<div>13:50</div><div>Гол!</div><div>Алалыкин</div>"
+          "<div>19:54</div><div>Гол!</div><div>Жаровский</div><div>Маджо, Шипачев</div>"
+          "<div>27:18</div><div>Гол!</div><div>Завгородний</div>"
+          "<div>57:05</div><div>Гол!</div><div>Шипачёв</div><div>Жаровский</div>")
+
+
+def lag_fetch(url):
+    if url.endswith("/hockey/club/salavat/calendar/"):
+        return "<a href='/hockey/match/2026-11-16/'>16.11</a><a href='/hockey/match/admiral-vs-salavat/'>3:1</a>"
+    if url.endswith("/hockey/match/admiral-vs-salavat/"):
+        return SR_LAG if state.get("sr_on") else SR_LAG.split("<div>13:50</div>")[0]
+    if url == api.SE_SCHEDULE:
+        return SCHEDULE
+    return state["page"]
+
+
+api.fetch = lag_fetch
+api.sr_assists = _sr_assists
+api.tg = lambda method, **kw: (msgs.append(kw.get("text", "")) if method == "sendMessage" else None) or {"ok": True, "result": {"message_id": 1}}
+api._cache.update(sent={}, srids={}, srseen={}, seids={"2026-11-16": "129367"}, game={}, groups={})
+state["se_down"] = False
+state["page"] = page(0)
+tick(5)
+state["page"] = page(900) + JS % "live"  # на странице только первый гол
+state["sr_on"] = True
+first = tick(900)
+second = tick(935)  # вторая сверка подряд — переключаемся на Sports.ru
+expect("отстал: сначала один гол со «Спорт-Экспресса»", [m.split("\n")[0] for m in first if "ГОЛ" in m or m.startswith("Гол")], ["🚨 ГОЛ «САЛАВАТА»!"])
+got = [m.replace("\n", " | ") for m in second if "ГОЛ" in m or m.startswith("Гол")]
+expect("отстал: пропущенные голы со Sports.ru, без повтора первого", got,
+       ["🚨 ГОЛ «САЛАВАТА»! | Салават Юлаев 2:0 Адмирал | 🏒 Жаровский (Маджо, Шипачев) | ⏱ 19:54 (1-й период)",
+        "Гол Адмирал | Салават Юлаев 2:1 Адмирал | 🏒 Завгородний | ⏱ 27:18 (2-й период, 7:18)",
+        "🚨 ГОЛ «САЛАВАТА»! | Салават Юлаев 3:1 Адмирал | 🏒 Шипачёв (Жаровский) | ⏱ 57:05 (3-й период, 17:05)"])
+expect("отстал: повторный опрос — тишина", [m for m in tick(960) if "ГОЛ" in m or m.startswith("Гол")], [])
+state["page"] = page(900) + JS.replace('"homeScore":6,"guestScore":5', '"homeScore":3,"guestScore":1') % "finished"
+fin = tick(3700)
+fin_msg = next((m for m in fin if m.startswith("🏁")), "")
+expect("отстал: итог матча приходит", fin_msg.split("\n")[:2], ["🏁 Матч окончен!", "Салават Юлаев 3:1 Адмирал"])
+expect("отстал: в итоге все шайбы", fin_msg.count("\n🏒 ") + fin_msg.count("\n· "), 4)
+
+# имена «Спорт-Экспресса» («Галиев Р.») и Sports.ru («Галиев»), разное написание («Родеволд» / «Родуолд»)
+expect("фамилия из «Галиев Р.»", api.sur("Галиев Р."), "Галиев")
+expect("одна фамилия на двух сайтах", (api.same_sur("Галиев Р.", "Галиев"), api.same_sur("Родеволд Д.", "Родуолд"), api.same_sur("Шипачёв", "Вадим Шипачев")), (True, True, True))
+expect("разные фамилии не путаем", (api.same_sur("Кузнецов", "Кузьмин"), api.same_sur("Смит", "Сучков")), (False, False))
+
 # фамилии наших игроков из настоящей страницы (26.11 список был пустым — все голы считались голами соперника)
 api.PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "index.html")
 _ours = _our_surnames()

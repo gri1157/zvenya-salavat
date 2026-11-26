@@ -17,6 +17,7 @@
 """
 import hashlib
 import hmac
+import difflib
 import json
 import os
 import re
@@ -779,6 +780,29 @@ def text_lines(page):
     return [x for x in (re.sub(r"\s+", " ", _html.unescape(l)).strip() for l in page.split("\n")) if x]
 
 
+def sur(name):
+    """Фамилия из любого написания: «Галиев Р.» (Спорт-Экспресс), «Данияр Галиев», «Галиев» (Sports.ru)."""
+    w = [x for x in str(name or "").replace(".", ". ").split() if not re.fullmatch(r"[A-ZА-ЯЁ]\.?", x)]
+    return w[-1] if w else ""
+
+
+def same_sur(a, b):
+    """Одна и та же фамилия, даже если сайты пишут её по-разному: «Родеволд» и «Родуолд», «Броссо» и «Бросо»."""
+    a, b = sur(a).lower().replace("ё", "е"), sur(b).lower().replace("ё", "е")
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    return min(len(a), len(b)) >= 5 and a[:2] == b[:2] and difflib.SequenceMatcher(None, a, b).ratio() >= 0.75
+
+
+def is_ours(name, ours):
+    """Игрок «Салавата»? None — если список наших не прочитался."""
+    if not ours:
+        return None
+    return any(same_sur(name, o) for o in ours)
+
+
 def our_surnames():
     try:
         with open(PAGE, encoding="utf8") as f:
@@ -868,9 +892,10 @@ def sr_goals_tick(d, g, now):
     mid = sr_match_id(d, g["o"])
     if not mid:
         return
-    goals = parse_goals(fetch(f"{SR}/hockey/match/{mid}/"))
+    goals = [x for x in parse_goals(fetch(f"{SR}/hockey/match/{mid}/")) if x[0] <= 3900]  # без серии буллитов
     ours = our_surnames()
     sent = load("sent")
+    st = sent.get(d + "live") or {}
     key = d + "goals"
     done = sent.get(key)
     if done is None:  # первый раз видим матч: если он давно идёт, старые голы не шлём
@@ -878,17 +903,27 @@ def sr_goals_tick(d, g, now):
     us = them = 0
     feed = []
     for t, who, ast in goals:
-        mine = who.split()[-1] in ours
+        mine = bool(is_ours(who, ours))
         us, them = (us + 1, them) if mine else (us, them + 1)
         feed.append({"t": t, "who": who, "mine": mine, "us": us, "them": them})
         k = f"{t}|{who}"
         if k in done:
             continue
         done.append(k)
-        head = "🚨 ГОЛ «САЛАВАТА»!" if mine else f"Гол {g['o']}"
-        push(goal_text(g, head, us, them, who, t, ast), silent=not mine)
+        ot = " В ОВЕРТАЙМЕ" if t > 3600 else ""
+        head = f"🚨 ГОЛ «САЛАВАТА»{ot}!" if mine else f"Гол {g['o']}{ot.lower()}"
+        msgs = push(goal_text(g, head, us, them, who, t, ast), silent=not mine)
+        if ast:
+            st.setdefault("ast", {})[k] = ast
+        else:  # передачи допишем, когда появятся
+            st.setdefault("pend", []).append({"t": t, "who": who, "head": head, "us": us, "them": them, "msgs": msgs, "t0": now})
+    if st.get("pend"):
+        assists_tick(d, g, st, now)
+    st["srfeed"] = feed
     with LOCK:
         sent[key] = done
+        if st:
+            sent[d + "live"] = st
         save("sent")
     live_set(d, g, now, us, them, LIVE.get("period", 0) if LIVE.get("d") == d else 0, feed)
 
@@ -1061,7 +1096,7 @@ def goals_list(d, g, st, rows):
             sr = []
         for k, t, who, *_ in need:
             for st_, sw, ast in sr:
-                if abs(st_ - t) <= 90 and sw.split()[-1] == who.split()[-1] and ast:
+                if abs(st_ - t) <= 90 and same_sur(sw, who) and ast:
                     known[f"{t}|{who}"] = ast
     out = []
     for k, t, who, mine, us, them in rows:
@@ -1084,7 +1119,7 @@ def sr_assists(d, g, t, who):
         mid = sr_match_id(d, g["o"])
         if mid:
             for st, sw, ast in parse_goals(fetch(f"{SR}/hockey/match/{mid}/")):
-                if abs(st - t) <= 90 and sw.split()[-1] == who.split()[-1]:
+                if abs(st - t) <= 90 and same_sur(sw, who):
                     return ast
     except Exception as e:
         print("передачи:", e, file=sys.stderr)
@@ -1133,13 +1168,13 @@ def live_tick(now):
             rows.append((f"{h}:{a}", t, who, mine, us, them))
         if st["src"] != "sr":
             st["src"] = "se"
-        # «Спорт-Экспресс» иногда отстаёт на десятки минут (26.11: 0:1 при счёте 1:2). Раз в минуту сверяемся
+        # «Спорт-Экспресс» иногда отстаёт на десятки минут (26.11: 0:1 при счёте 1:2). Раз в 30 секунд сверяемся
         # с Sports.ru: если там два раза подряд больше голов, до конца матча голы берём оттуда.
-        if st["src"] == "se" and not late and now - st.get("srchk", 0) >= 60:
+        if st["src"] == "se" and not late and now - st.get("srchk", 0) >= 30:
             st["srchk"] = now
             try:
                 smid = sr_match_id(d, g["o"])
-                srg = parse_goals(fetch(f"{SR}/hockey/match/{smid}/")) if smid else []
+                srg = [x for x in parse_goals(fetch(f"{SR}/hockey/match/{smid}/")) if x[0] <= 3900] if smid else []
             except Exception as e:
                 print("сверка с Sports.ru:", e, file=sys.stderr)
                 srg = []
@@ -1154,7 +1189,8 @@ def live_tick(now):
             p = se["period"]
             st["p"] = p
             if not late:
-                before = [r for r in rows if r[1] <= (p - 1) * 1200] if p < 5 else rows
+                src_rows = [(None, f["t"], f["who"], f["mine"], f["us"], f["them"]) for f in st.get("srfeed", [])] if st["src"] == "sr" else rows
+                before = [r for r in src_rows if r[1] <= (p - 1) * 1200] if p < 5 else src_rows
                 us, them = (before[-1][4], before[-1][5]) if before else (0, 0)
                 head = {4: "⏱ Начался овертайм!", 5: "🎯 Серия буллитов!"}.get(p, f"▶️ Начался {p}-й период")
                 push(f"{head}\n{score_line(g, us, them)}")
@@ -1190,14 +1226,17 @@ def live_tick(now):
             st["pens"].append(k)
             if late:
                 continue
-            mine = who.split()[-1] in ours if ours else None
+            mine = is_ours(who, ours)
             team = " («Салават Юлаев»)" if mine else f" ({g['o']})" if mine is False else ""
             push(f"⛔ Удаление{team}\n{who}{' — ' + why if why else ''}, {t // 60}:{t % 60:02d}", silent=mine is False)
         if st["pend"]:
             assists_tick(d, g, st, now)
+        if st["src"] == "sr":  # голы — со Sports.ru: счёт и список шайб берём оттуда
+            rows = [(f"{f['us']}:{f['them']}" if home else f"{f['them']}:{f['us']}", f["t"], f["who"], f["mine"], f["us"], f["them"])
+                    for f in st.get("srfeed", [])]
         us, them = (rows[-1][4], rows[-1][5]) if rows else (0, 0)
         stt = se.get("state") or {}
-        if stt.get("code") == "finished" and not st.get("fin") and st["src"] == "se":
+        if stt.get("code") == "finished" and not st.get("fin"):
             st["fin"] = True
             if stt.get("home") is not None:
                 us, them = (stt["home"], stt["guest"]) if home else (stt["guest"], stt["home"])
