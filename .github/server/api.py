@@ -135,6 +135,10 @@ def clean_pick(p, d):
         return None
     return {"w": p["w"], "gf": gf, "ga": ga, "f": pad(p.get("f"), 4, 3), "d": pad(p.get("d"), 4, 2),
             "g": S(p.get("g")), "a": S(p.get("a")), "o": calendar().get(d, {}).get("o") or S(p.get("o")),
+            # быстрый режим «Моей игры»: кто забьёт первым, будет ли овертайм, броски «Салавата» 30+ (необязательно)
+            "fg": p.get("fg") if p.get("fg") in ("S", "O") else None,
+            "ot": p.get("ot") if p.get("ot") in ("y", "n") else None,
+            "sh": p.get("sh") if p.get("sh") in ("hi", "lo") else None,
             "ts": int(time.time() * 1000)}
 
 
