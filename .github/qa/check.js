@@ -27,6 +27,9 @@ const PRO = ['match', 'match-post', 'team', 'plr', 'gk', 'opp', 'club', 'club-ag
   try {
     res.failedChecks = await pg.evaluate(() => (typeof selfChecks === 'function' ? selfChecks() : []).filter(c => !c.ok).map(c => c.t || c.name || JSON.stringify(c)));
   } catch (e) { res.errors.push('selfChecks: ' + e.message); }
+  // «Моя игра»: срок приёма прогнозов берётся из CAL, поэтому сыгранные матчи должны там оставаться
+  const noCal = await pg.evaluate(() => GAMES.filter(g => g.d >= '2026-11-16' && !CAL.some(c => c[0] === g.d && /^\d\d:\d\d$/.test(c[1]))).map(g => g.d)).catch(e => [e.message]);
+  if (noCal.length) res.failedChecks.push('в CAL нет сыгранных матчей или времени их начала: ' + noCal.join(', '));
   for (const [ui, views] of [['lite', LITE], ['pro', PRO]]) {
     await pg.goto(url + '#board');
     await pg.waitForTimeout(400);
