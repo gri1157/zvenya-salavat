@@ -1260,12 +1260,37 @@ def live_tick(now):
     return True
 
 
+def mvp_catchup(now):
+    """Голосование за лучшего игрока, если итог матча не ушёл (26.11 так и было): на следующий день с 9 утра по Уфе,
+    пока не прошло 24 часа после начала. Кандидаты — авторы наших голов, которых бот видел во время матча."""
+    if datetime.fromtimestamp(now, UFA).hour < 9:
+        return
+    cal, sent, mv = calendar(), load("sent"), load("mvp")
+    for d, g in cal.items():
+        st = sent.get(d + "live")
+        if not st or st.get("fin") or d in mv or not (g["kickoff"] + 3 * 3600 < now < g["kickoff"] + 24 * 3600):
+            continue
+        ours = our_surnames()
+        who = [f["who"] for f in st.get("srfeed", []) if f.get("mine")]
+        who += [k.split("|", 1)[1] for k in sent.get(d + "goals", []) if is_ours(k.split("|", 1)[1], ours)]
+        cands = list(dict.fromkeys(sur(w) for w in who if sur(w)))[:6] + ["🧤 Вратарь «Салавата»"]
+        with LOCK:
+            st["fin"] = True
+            load("mvp")[d] = {"c": cands, "v": {}, "ts": int(now), "o": g["o"]}
+            save("mvp")
+            save("sent")
+        push(f"⭐ Кто лучший игрок «Салавата» в матче с «{g['o']}» {d[8:10]}.{d[5:7]}? Голосуй — итог покажу в приложении.",
+             silent=True, reply_markup=mvp_markup(d, cands))
+
+
 def live_loop():
     """Во время матча раз в 10 секунд читает страницу матча и рассылает начало периодов и голы."""
     while True:
         on = False
         try:
             on = bool(TOKEN) and live_tick(time.time())
+            if TOKEN and not on:
+                mvp_catchup(time.time())
         except Exception as e:
             print("матч онлайн:", e, file=sys.stderr)
         time.sleep(10 if on else 60)  # во время матча — раз в 10 секунд
