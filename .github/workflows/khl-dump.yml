@@ -1,0 +1,18 @@
+name: Выгрузка протокола khl.ru
+on:
+  push:
+    branches: [data/khl-dump]
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm init -y >/dev/null && npm install playwright@1.48.2 && npx playwright install --with-deps chromium
+      - run: node .github/data/khl_dump.js 902308 > .github/data/khl-902308.json && wc -c .github/data/khl-902308.json
+      - run: |
+          git config user.name Claude && git config user.email noreply@anthropic.com
+          git add .github/data/khl-902308.json && git commit -m "Выгрузка протокола 902308 [skip ci]" && git push
