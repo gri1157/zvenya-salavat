@@ -118,7 +118,123 @@ def check_init(init):
     if not u.get("id"):
         return None
     name = " ".join(x for x in [u.get("first_name", ""), u.get("last_name", "")] if x).strip() or u.get("username", "")
-    return {"id": str(u["id"]), "name": name[:60]}
+    return {"id": str(u["id"]), "name": name[:60], "u": str(u.get("username") or "")[:40]}
+
+
+# ---------- участники и доступ к Pro (закрытая бета): заявка → владелец пускает или отказывает
+PRO_LAUNCH = "2026-11-28"  # кто сделал прогноз до этого дня включительно, получает Pro сразу
+PRO_AGAIN = 7 * 86400  # после отказа новая заявка — через 7 дней
+
+
+def touch_user(u):
+    """Запоминаем, кто открыл приложение: имя, ник, когда пришёл впервые и когда заходил последний раз."""
+    now = int(time.time())
+    with LOCK:
+        us = load("users")
+        r = us.get(u["id"])
+        if r is None:
+            us[u["id"]] = {"n": u["name"], "u": u.get("u", ""), "f": now, "l": now}
+            save("users")
+        elif now - r.get("l", 0) > 600 or r.get("n") != u["name"] or r.get("u", "") != u.get("u", ""):
+            r.update(n=u["name"], u=u.get("u", ""), l=now)
+            save("users")
+
+
+def pro_state(uid):
+    """yes — Pro открыт; wait — заявка ждёт; no — отказ или доступ забран; none — заявки не было."""
+    if uid and uid == owner_id():
+        return "yes"
+    r = load("users").get(uid) or {}
+    if r.get("pro") in ("yes", "no", "wait"):
+        return r["pro"]
+    picks = load("game").get(uid, {}).get("picks", {})
+    return "yes" if any(d <= PRO_LAUNCH for d in picks) else "none"
+
+
+def pro_info(uid):
+    st = pro_state(uid)
+    r = load("users").get(uid) or {}
+    again = r.get("rq", 0) + PRO_AGAIN if st == "no" else 0
+    return {"pro": st, "again": again if again > time.time() else 0}
+
+
+def pro_set(uid, st):
+    with LOCK:
+        us = load("users")
+        us.setdefault(uid, {"n": load("names").get(uid, ""), "u": "", "f": int(time.time()), "l": 0})["pro"] = st
+        save("users")
+
+
+def pro_request(u):
+    """Заявка на Pro: владельцу приходит сообщение с кнопками «Пустить» и «Отказать»."""
+    info = pro_info(u["id"])
+    if info["pro"] in ("yes", "wait") or info["again"]:
+        return info
+    with LOCK:
+        us = load("users")
+        us.setdefault(u["id"], {"n": u["name"], "u": u.get("u", ""), "f": int(time.time()), "l": int(time.time())})
+        us[u["id"]].update(pro="wait", rq=int(time.time()))
+        save("users")
+    o = owner_id()
+    if o:
+        nick = f" @{u['u']}" if u.get("u") else ""
+        tg("sendMessage", chat_id=int(o), text=f"🔑 Заявка на Pro: {u['name'] or 'без имени'}{nick} (id {u['id']})",
+           reply_markup={"inline_keyboard": [[{"text": "✅ Пустить", "callback_data": f"pro|ok|{u['id']}"},
+                                              {"text": "✖️ Отказать", "callback_data": f"pro|no|{u['id']}"}]]})
+    return pro_info(u["id"])
+
+
+def pro_callback(q):
+    """Кнопки владельца: пустить, отказать, забрать Pro. Человеку бот пишет ответ."""
+    ans = {"method": "answerCallbackQuery", "callback_query_id": q.get("id")}
+    if str((q.get("from") or {}).get("id") or "") != owner_id():
+        return dict(ans, text="Это может только автор приложения")
+    try:
+        _, act, uid = (q.get("data") or "").split("|")
+    except ValueError:
+        return ans
+    name = (load("users").get(uid) or {}).get("n") or load("names").get(uid) or uid
+    if act == "ok":
+        pro_set(uid, "yes")
+        tg("sendMessage", chat_id=int(uid), text="🔓 Pro открыт! Открой приложение и нажми «Pro».", reply_markup=kb("Открыть Pro", ""))
+        done = f"✅ {name}: Pro открыт"
+    elif act == "no":
+        pro_set(uid, "no")
+        tg("sendMessage", chat_id=int(uid), text="Pro пока в закрытой бете — напишем, когда откроем его для всех. "
+           "Повторную заявку можно отправить через 7 дней. Lite и «Моя игра» работают как обычно.")
+        done = f"✖️ {name}: отказано"
+    elif act == "off":
+        pro_set(uid, "no")
+        tg("sendMessage", chat_id=int(uid), text="Доступ к Pro закрыт. Lite и «Моя игра» работают как раньше.")
+        done = f"🔒 {name}: Pro забран"
+    else:
+        return ans
+    m = q.get("message") or {}
+    if m.get("message_id") and act in ("ok", "no"):
+        tg("editMessageText", chat_id=m["chat"]["id"], message_id=m["message_id"], text=(m.get("text") or "") + f"\n{done}")
+    return dict(ans, text=done)
+
+
+def users_text():
+    """/users: последние 20 участников — имя, ник, когда пришёл, есть ли Pro; кнопки «Забрать Pro»."""
+    us, names = load("users"), load("names")
+    rows = dict(us)
+    for uid, n in names.items():  # кто писал боту, но приложение ещё не открывал
+        rows.setdefault(uid, {"n": n, "u": "", "f": 0})
+    order = sorted(rows.items(), key=lambda kv: -kv[1].get("f", 0))[:20]
+    mark = {"yes": "Pro ✓", "wait": "Pro ⏳ заявка", "no": "—", "none": "—"}
+    lines = [f"👥 Участников: {len(rows)} (открывали приложение: {len(us)})", ""]
+    btn = []
+    for i, (uid, r) in enumerate(order, 1):
+        st = pro_state(uid)
+        f = datetime.fromtimestamp(r["f"], UFA).strftime("%d.%m") if r.get("f") else "бот"
+        nick = f" @{r['u']}" if r.get("u") else ""
+        lines.append(f"{i}. {r.get('n') or 'без имени'}{nick} · {f} · {mark[st]}")
+        if st == "yes" and uid != owner_id() and len(btn) < 10:
+            btn.append([{"text": f"🔒 Забрать Pro: {(r.get('n') or uid)[:24]}", "callback_data": f"pro|off|{uid}"}])
+        if st == "wait" and len(btn) < 10:
+            btn.append([{"text": f"✅ Пустить: {(r.get('n') or uid)[:24]}", "callback_data": f"pro|ok|{uid}"}])
+    return "\n".join(lines), ({"inline_keyboard": btn} if btn else None)
 
 
 # ---------- проверка содержимого
@@ -431,6 +547,8 @@ def final_whistle(d, g, us, them, suffix, scorers, glist=""):
 def bot_update(u):
     """Ответ на сообщение боту — сразу в ответе вебхука, без лишних запросов."""
     if u.get("callback_query"):
+        if str(u["callback_query"].get("data") or "").startswith("pro|"):
+            return pro_callback(u["callback_query"])
         return mvp_vote(u["callback_query"])
     cm = u.get("my_chat_member")
     if cm and cm.get("chat", {}).get("type") == "private":
@@ -491,6 +609,10 @@ def bot_update(u):
                 load("owner")["id"] = uid
                 save("owner")
         return {"method": "sendMessage", "chat_id": chat["id"], "text": admin_text()}
+    if cmd == "/users" and uid == owner_id():
+        text, mk = users_text()
+        ans = {"method": "sendMessage", "chat_id": chat["id"], "text": text}
+        return dict(ans, reply_markup=mk) if mk else ans
     if cmd in ("/table", "/top"):
         return {"method": "sendMessage", "chat_id": chat["id"], "text": table_text(), "reply_markup": kb("Моя игра", "#game")}
     if cmd == "/goals":
@@ -1324,6 +1446,7 @@ class H(BaseHTTPRequestHandler):
     def user(self):
         u = check_init(self.headers.get("X-Tg-Init", ""))
         if u:
+            touch_user(u)
             names = load("names")
             if names.get(u["id"]) != u["name"]:
                 with LOCK:
@@ -1356,7 +1479,7 @@ class H(BaseHTTPRequestHandler):
         if not u:
             return self.send(401, {"error": "нет подписи Телеграма"})
         if p[:2] == ["api", "me"]:
-            return self.send(200, {"id": u["id"], "name": u["name"], "sub": bool(load("subs").get(u["id"], {}).get("on")), "goals": bool(load("subs").get(u["id"], {}).get("goals", True))})
+            return self.send(200, dict({"id": u["id"], "name": u["name"], "sub": bool(load("subs").get(u["id"], {}).get("on")), "goals": bool(load("subs").get(u["id"], {}).get("goals", True))}, **pro_info(u["id"])))
         if p[:2] == ["api", "leagues"]:
             return self.send(200, {"leagues": my_leagues(u["id"]), "bot": bot_name()})
         if len(p) == 3 and p[1] == "c":
@@ -1473,6 +1596,8 @@ class H(BaseHTTPRequestHandler):
         u = self.user()
         if not u:
             return self.send(401, {"error": "нет подписи Телеграма"})
+        if p[:2] == ["api", "pro"]:
+            return self.send(200, pro_request(u))
         if p[:2] == ["api", "profiles"]:
             try:
                 ids = self.body().get("ids") or []

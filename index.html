@@ -240,6 +240,7 @@ select,input[type=text]{font:500 14px var(--body);padding:8px 10px;border-radius
 .uisw{display:inline-flex;border:2px solid var(--red);border-radius:999px;padding:4px;background:var(--surface);gap:4px}
 .uisw button{font:700 15px var(--body);letter-spacing:.02em;min-width:100px;padding:8px 20px;border-radius:999px;border:0;background:transparent;color:var(--red);cursor:pointer}
 .uisw button[aria-pressed="true"]{background:var(--red);color:var(--red-ink)}
+.uisw button.locked::after{content:"🔒";margin-left:4px;font-size:12px}
 .uisw button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .langsw-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .langsw,.themesw{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--surface)}
@@ -1034,7 +1035,7 @@ nav.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px
 
 <script>
 // ===== ДАННЫЕ =====
-const APP_VERSION="1.110.95";
+const APP_VERSION="1.111.97";
 const UPDATED={n:3,date:"25 ноября 2026",table:"25 ноября",after:"матча с Нефтехимиком (24 ноября, 5:4 ОТ)"};
 // новички без матчей за Салават стоят в конце с номером 0 и нулями: после первого матча обнови их строку, второй раз не добавляй
 // текущий сезон (Sports.ru, 24 матча; матч 10.11: М, Г, П, Шв по протоколу, у сыгравших в нём +/- и среднее ИВ за 25 матчей по Спорт-Экспрессу на 11.11): [номер, имя, амплуа, М, Г, П, +/-, Шв, ИВ]
@@ -1229,6 +1230,10 @@ const W=Object.fromEntries(Object.entries(DEFW).map(([k,v])=>[k,{l:WL[k][0],h:WL
 let season="all",mode="stack",grind=true,scen="next",board="model",pfilter="all",sortKey="sc",sortDir=-1,formN=10,lastN=10,shotMode="gs",planSrc="model";
 let OV={},MINE=null,SHARED=null;
 let UI="lite";try{const u=localStorage.getItem("zv-ui");if(u==="lite"||u==="pro")UI=u}catch(e){}
+// Pro в Телеграме — закрытая бета: открыт владельцу, тем, кто играл до 28.11, и по заявке. Вне Телеграма (claude.ai) — открыт.
+const IN_TG=!!(window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initData);
+let PROACC=IN_TG?"?":"yes",PROAGAIN=0;try{if(IN_TG&&localStorage.getItem("zv-pro")==="yes")PROACC="yes"}catch(e){}
+if(UI==="pro"&&PROACC!=="yes")UI="lite";
 document.documentElement.dataset.ui=UI;
 // тема: пока человек не выбрал сам, приложение следует настройке телефона
 let THEME=null;try{const t=localStorage.getItem("zv-theme");if(t==="light"||t==="dark")THEME=t}catch(e){}
@@ -3121,7 +3126,17 @@ function liveTick(){clearTimeout(LIVE_T);if(document.hidden){LIVE_T=setTimeout(l
 if(TG){setTimeout(liveTick,0);document.addEventListener("visibilitychange",()=>{if(!document.hidden)liveTick()})}
 var TGSUB=null,TGGOALS=null,TGMVP=null;
 if(TG)setTimeout(()=>fetch("/api/public/mvp").then(r=>r.json()).then(j=>{if(j&&j.total){TGMVP=j;if(curView()==="game")renderGame()}}).catch(()=>{}),0);
-if(TG)setTimeout(()=>tgApi("GET","/me").then(j=>{TGSUB=!!j.sub;TGGOALS=!!j.goals;if(curView()==="game")renderGame()}).catch(()=>{}),0);
+if(TG)setTimeout(()=>tgApi("GET","/me").then(j=>{TGSUB=!!j.sub;TGGOALS=!!j.goals;proSet(j);if(curView()==="game")renderGame()}).catch(()=>{}),0);
+function proSet(j){if(!j||!j.pro)return;PROACC=j.pro;PROAGAIN=j.again||0;try{localStorage.setItem("zv-pro",PROACC==="yes"?"yes":"")}catch(e){}
+  syncUI();if(UI==="pro"&&PROACC!=="yes")setUIMode("lite",true)}
+// окно «Pro — закрытая бета»: запросить доступ, заявка ждёт, отказ
+function proGate(){const again=PROAGAIN?new Date(PROAGAIN*1000).toLocaleDateString("ru-RU",{day:"numeric",month:"long"}):"";
+  const body=PROACC==="wait"?`<p>Заявка отправлена. Как только автор приложения ответит, бот напишет тебе в Telegram.</p>`
+    :PROACC==="no"&&again?`<p>Pro пока в закрытой бете. Повторную заявку можно отправить с ${esc(again)}.</p>`
+    :`<p>Pro — закрытая бета для аналитиков: разбор матчей, тревоги, сравнение с соперником, генменеджер и агент. Версия ещё в доработке, поэтому доступ открывает автор приложения.</p><button class="btn pri" id="proReq" type="button">Запросить доступ</button>`;
+  openSheet(`<div class="sheet-top"><div><div class="eyebrow">Pro beta</div><h3 class="big" id="shName">🔒 Доступ по заявке</h3></div><button class="btn" data-close>Закрыть</button></div>${body}<p class="legend">Lite и «Моя игра» открыты всем, как и раньше.</p>`)}
+document.addEventListener("click",e=>{if(!e.target.closest("#proReq"))return;const b=e.target.closest("#proReq");b.disabled=true;b.textContent="Отправляем…";
+  tgApi("POST","/pro",{}).then(j=>{proSet(j);proGate();hap("success")}).catch(()=>{b.disabled=false;b.textContent="Запросить доступ";toast("Не получилось отправить заявку — попробуй ещё раз")})});
 document.addEventListener("click",e=>{if(!e.target.closest("#tgGoals"))return;const on=()=>tgApi("POST","/subscribe",{goals:true}).then(()=>{TGGOALS=true;TGSUB=true;hap("success");toast("Матч онлайн включён");renderGame()}).catch(()=>toast("Не получилось, попробуй позже"));
   try{if(TG.requestWriteAccess)TG.requestWriteAccess(ok=>ok?on():toast("Без разрешения бот не сможет писать"));else on()}catch(_){on()}});
 document.addEventListener("click",e=>{if(!e.target.closest("#tgRemind"))return;const on=()=>tgApi("POST","/subscribe",{on:true}).then(()=>{TGSUB=true;hap("success");toast("Напоминания включены");renderGame()}).catch(()=>toast("Не получилось, попробуй позже"));
@@ -3669,11 +3684,14 @@ function route(){const h=location.hash.replace("#","");const show=curViews(),t=U
   if(STATE.LU)renderLazy();
   if(UI==="lite"&&h==="leaders")setTimeout(()=>{const v=document.getElementById("v-leaders");if(v)v.scrollIntoView({block:"start"})},0)}
 window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(/^v-[a-z0-9]{6}$/.test(h)){loadCode(h.slice(2));return}route();window.scrollTo({top:0})});
-const syncUI=()=>document.querySelectorAll("[data-uiset]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.uiset===UI)));
-document.querySelector(".uisw").addEventListener("click",e=>{const b=e.target.closest("[data-uiset]");if(!b||b.dataset.uiset===UI)return;
-  UI=b.dataset.uiset;try{localStorage.setItem("zv-ui",UI)}catch(err){}document.documentElement.dataset.ui=UI;syncUI();
+const syncUI=()=>document.querySelectorAll("[data-uiset]").forEach(b=>{b.setAttribute("aria-pressed",String(b.dataset.uiset===UI));if(b.dataset.uiset==="pro")b.classList.toggle("locked",PROACC!=="yes")});
+function setUIMode(m,quiet){UI=m;try{localStorage.setItem("zv-ui",UI)}catch(err){}document.documentElement.dataset.ui=UI;syncUI();
   if(!sheet.hidden)closeSheet();const h=location.hash.replace("#","");if(canonHash(h)!==h){try{history.replaceState(null,"","#"+canonHash(h))}catch(err){}}
-  route();render();toast(UI==="lite"?"Lite: самое главное":"Pro beta: все разделы и настройки, версия в доработке")});
+  route();render();if(!quiet)toast(UI==="lite"?"Lite: самое главное":"Pro beta: все разделы и настройки, версия в доработке")}
+document.querySelector(".uisw").addEventListener("click",e=>{const b=e.target.closest("[data-uiset]");if(!b||b.dataset.uiset===UI)return;
+  if(b.dataset.uiset==="pro"&&PROACC!=="yes"){proGate();return}
+  setUIMode(b.dataset.uiset)});
+syncUI();
 document.getElementById("boardSel").addEventListener("change",e=>{board=e.target.value;render()});
 document.getElementById("kozSel").addEventListener("change",e=>{if(!e.target.value)return;board=e.target.value;render();toast("На доске звенья Козлова на этот матч")});
 document.getElementById("litePf").addEventListener("click",e=>{const b=e.target.closest("[data-lpf]");if(!b)return;litePf=b.dataset.lpf;renderLitePlayers()});
