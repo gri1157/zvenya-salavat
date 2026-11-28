@@ -380,6 +380,31 @@ api.mvp_catchup(KICK + 16 * 3600)
 expect("голосование догоняет: второй раз не шлём", msgs, [])
 api.our_surnames = _our_surnames
 
+# доступ к Pro: кто уже играл — сразу; остальные — по заявке, которую пускает владелец
+calls = []
+api.tg = lambda method, **kw: calls.append((method, kw.get("chat_id"), kw.get("text", ""), kw.get("reply_markup"))) or {"ok": True}
+api._cache.update(users={}, owner={"id": "1"}, names={"1": "Гриша"},
+                  game={"5": {"picks": {"2026-11-24": {"w": "S"}}}, "9": {"picks": {"2026-12-01": {"w": "S"}}}})
+api.touch_user({"id": "7", "name": "Иван", "u": "ivan"})
+expect("Pro: владелец, кто уже играл, новичок", (api.pro_state("1"), api.pro_state("5"), api.pro_state("9"), api.pro_state("7")), ("yes", "yes", "none", "none"))
+r = api.pro_request({"id": "7", "name": "Иван", "u": "ivan"})
+expect("Pro: заявка ждёт", r["pro"], "wait")
+expect("Pro: владельцу пришла заявка с кнопками", (calls[-1][1], calls[-1][2], [b["text"] for b in calls[-1][3]["inline_keyboard"][0]]),
+       (1, "🔑 Заявка на Pro: Иван @ivan (id 7)", ["✅ Пустить", "✖️ Отказать"]))
+q = {"id": "q", "from": {"id": 7}, "data": "pro|ok|7"}
+expect("Pro: чужой не может пустить", api.pro_callback(q).get("text"), "Это может только автор приложения")
+q["from"]["id"] = 1
+api.pro_callback(q)
+expect("Pro: пустил — открыт, человеку написали", (api.pro_state("7"), calls[-1][1], calls[-1][2].startswith("🔓 Pro открыт!")), ("yes", 7, True))
+txt, mk = api.users_text()
+expect("Pro: /users — список и кнопка «Забрать»", ("Иван @ivan" in txt, any("Забрать Pro: Иван" in r[0]["text"] for r in mk["inline_keyboard"])), (True, True))
+api.pro_callback({"id": "q", "from": {"id": 1}, "data": "pro|off|7"})
+expect("Pro: забрал — закрыт, повторная заявка через 7 дней", (api.pro_state("7"), bool(api.pro_info("7")["again"])), ("no", True))
+api.pro_callback({"id": "q", "from": {"id": 1}, "data": "pro|off|5"})
+expect("Pro: забрал у того, кто уже играл", api.pro_state("5"), "no")
+n = len(calls)
+expect("Pro: повторная заявка раньше срока не отправляется", (api.pro_request({"id": "7", "name": "Иван", "u": "ivan"})["pro"], len(calls)), ("no", n))
+
 # фамилии наших игроков из настоящей страницы (26.11 список был пустым — все голы считались голами соперника)
 api.PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "index.html")
 _ours = _our_surnames()
