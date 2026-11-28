@@ -19,6 +19,7 @@ import hashlib
 import hmac
 import difflib
 import json
+import py_compile
 import os
 import re
 import sys
@@ -1659,17 +1660,56 @@ class H(BaseHTTPRequestHandler):
         self.send(404, {"error": "нет такого адреса"})
 
 
-def watch_self():
-    """Когда обновление с GitHub меняет этот файл — выходим, systemd перезапускает уже новую версию."""
+def watch_self(check=60):
+    """Обновление без терминала: сервер раз в 5 минут берёт свежий код с GitHub (update-safe.sh), этот поток
+    замечает новый api.py и выходит — systemd сразу запускает новую версию. Новый файл сначала проверяем
+    на ошибки (иначе остаёмся на старом и пишем владельцу), а во время матча ждём финальной сирены."""
     me = os.path.abspath(__file__)
     t0 = os.path.getmtime(me)
+    told = 0
     while True:
-        time.sleep(60)
+        time.sleep(check)
         try:
-            if os.path.getmtime(me) != t0:
-                os._exit(0)
+            if os.path.getmtime(me) == t0:
+                continue
+            try:
+                py_compile.compile(me, doraise=True, cfile=os.path.join(DATA, ".api-check.pyc"))
+            except py_compile.PyCompileError as e:
+                if told != os.path.getmtime(me):
+                    told = os.path.getmtime(me)
+                    print("новый api.py с ошибкой, остаюсь на старом:", e, file=sys.stderr)
+                    o = owner_id()
+                    if o:
+                        tg("sendMessage", chat_id=int(o), text="⚠️ Новая версия бота не запустилась: в коде ошибка. Работаю на прежней.")
+                continue
+            if LIVE.get("on") and not LIVE.get("fin"):
+                continue  # идёт матч — перезапустимся после финальной сирены
+            os._exit(0)
         except OSError:
             pass
+
+
+def page_version():
+    try:
+        with open(PAGE, encoding="utf8") as f:
+            m = re.search(r'const APP_VERSION="([^"]+)"', f.read(200000))
+        return m.group(1) if m else ""
+    except OSError:
+        return ""
+
+
+def tell_updated():
+    """После перезапуска с новой версией — одна строка владельцу, чтобы не проверять сервер вручную."""
+    v = page_version()
+    with LOCK:
+        ow = load("owner")
+        was = ow.get("ver")
+        if v and was != v:
+            ow["ver"] = v
+            save("owner")
+    o = owner_id()
+    if v and was and was != v and o:
+        tg("sendMessage", chat_id=int(o), text=f"🔄 Бот обновился сам: версия {v}.", disable_notification=True)
 
 
 if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--probe-se":
@@ -1693,6 +1733,7 @@ if __name__ == "__main__":
     if not TOKEN:
         print("нет BOT_TOKEN — запись и чтение работать не будут", file=sys.stderr)
     threading.Thread(target=watch_self, daemon=True).start()
+    threading.Thread(target=tell_updated, daemon=True).start()
     threading.Thread(target=bot_setup, daemon=True).start()
     threading.Thread(target=reminders, daemon=True).start()
     threading.Thread(target=live_loop, daemon=True).start()

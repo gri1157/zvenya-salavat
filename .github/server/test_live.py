@@ -405,6 +405,17 @@ expect("Pro: забрал у того, кто уже играл", api.pro_state(
 n = len(calls)
 expect("Pro: повторная заявка раньше срока не отправляется", (api.pro_request({"id": "7", "name": "Иван", "u": "ivan"})["pro"], len(calls)), ("no", n))
 
+# обновление без терминала: после перезапуска с новой версией владелец получает одну строку
+calls = []
+api.tg = lambda method, **kw: calls.append(kw.get("text", "")) or {"ok": True}
+api._cache["owner"] = {"id": "1"}
+api.page_version = lambda: "1.0.1"
+api.tell_updated()
+api.page_version = lambda: "1.0.2"
+api.tell_updated()
+api.tell_updated()
+expect("сам обновился: одно сообщение о новой версии", calls, ["🔄 Бот обновился сам: версия 1.0.2."])
+
 # фамилии наших игроков из настоящей страницы (26.11 список был пустым — все голы считались голами соперника)
 api.PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "index.html")
 _ours = _our_surnames()
